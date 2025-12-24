@@ -7,71 +7,71 @@
   <link rel="stylesheet" href="./style.css" />
 </head>
 <body>
-<main class="wrap">
-
-<header class="top">
-  <div>
-    <div class="title">🐱 Cat Dash Duel</div>
-    <div class="sub">
-      三跑道｜空白鍵循環換道｜↑↓ / W S 指定｜技能 F
-    </div>
-  </div>
-  <div class="hud">
-    <div class="pill">玩家 <span id="hudPlayer">玩家一</span></div>
-    <div class="pill">倒數 <span id="hudRoundTime">20</span>s</div>
-    <div class="pill">分數 <span id="hudScore">0</span></div>
-    <div class="pill">技能 <span id="hudSkillName">—</span></div>
-    <button id="btnRestart" class="btn">重置</button>
-  </div>
-</header>
-
-<section class="stage" id="stage">
-  <canvas id="game"></canvas>
-
-  <!-- Overlay -->
-  <div id="overlay" class="overlay">
-    <div class="card" id="overlayCard">
-
-      <!-- START -->
-      <div id="panelStart" class="panel">
-        <div class="cardTitle">🐾 貓咪三跑道衝刺賽</div>
-        <div class="cardBody">
-          按 START → 選玩家 → 選貓 → 開跑
-        </div>
-        <div class="cardActions center">
-          <button class="btn big" id="btnGoPick">START</button>
+  <main class="wrap">
+    <header class="top">
+      <div>
+        <div class="title">🐱 Cat Dash Duel</div>
+        <div class="sub">
+          三跑道｜空白鍵換道 / ↑↓ 或 W/S｜技能 F｜
+          中間跑道 = 高風險高報酬
         </div>
       </div>
 
-      <!-- PICK -->
-      <div id="panelPick" class="panel hidden">
-        <div class="cardTitle">先選擇玩家人數（1～4）</div>
-        <div class="countRow">
-          <button class="countBtn" data-n="1">1 位</button>
-          <button class="countBtn" data-n="2">2 位</button>
-          <button class="countBtn" data-n="3">3 位</button>
-          <button class="countBtn" data-n="4">4 位</button>
+      <div class="hud">
+        <div class="pill">玩家 <span id="hudPlayer">玩家一</span></div>
+        <div class="pill">倒數 <span id="hudRoundTime">20</span>s</div>
+        <div class="pill">分數 <span id="hudScore">0</span></div>
+
+        <div class="pill skillPill">
+          技能 <span id="hudSkillName">—</span>
+          <span class="cdWrap"><span id="hudSkillCD" class="cdBar"></span></span>
+          <span class="skillHint">F</span>
+        </div>
+
+        <button id="btnRestart" class="btn">重置</button>
+      </div>
+    </header>
+
+    <section class="stage" id="stage">
+      <canvas id="game"></canvas>
+
+      <!-- Overlay -->
+      <div id="overlay" class="overlay">
+        <div class="card" id="overlayCard">
+          <div class="panel" id="panelReady">
+            <div class="cardTitle">按「開始」進行 玩家一 回合</div>
+            <div class="cardBody">
+              🧪🧪 兩條命（撞樹扣一瓶）<br/>
+              🐟 +50　🍗 +100　🍔 +150　💣 -100
+            </div>
+
+            <div class="cardRow">
+              <label class="label">每回合秒數</label>
+              <input id="roundSeconds" type="number" value="20" min="5" max="120">
+            </div>
+
+            <div class="cardActions center">
+              <button id="btnStart" class="btn">開始</button>
+            </div>
+          </div>
         </div>
       </div>
 
-      <!-- READY -->
-      <div id="panelReady" class="panel hidden">
-        <div class="cardTitle" id="stateTitle">準備開始</div>
-        <div class="cardActions center">
-          <button class="btn" id="btnStart">開始</button>
-        </div>
+      <div class="legend">
+        <span>🐟 +50</span>
+        <span>🍗 +100</span>
+        <span>🍔 +150</span>
+        <span>💣 -100</span>
+        <span>🧪×2 撞樹扣命</span>
       </div>
+    </section>
 
-    </div>
-  </div>
-</section>
+    <footer class="foot">
+      <span>技巧：中間跑道分高但樹更多</span>
+      <span>技能冷卻好再用</span>
+    </footer>
+  </main>
 
-<footer class="foot">
-  🐟 +50 ｜ 🍗 +100 ｜ 🍔 +150 ｜ 💣 -100 ｜ 🧪×2
-</footer>
-
-</main>
-
-<script src="./game.js"></script>
+  <script src="./game.js"></script>
 </body>
 </html>
