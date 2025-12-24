@@ -48,6 +48,12 @@ body{
 }
 .btn:hover{ filter:brightness(1.02); }
 .btn:active{ transform:scale(.99); }
+.btn.big{
+  font-size:22px;
+  padding:14px 22px;
+  border-radius:16px;
+  box-shadow:0 18px 40px rgba(15,23,42,.16);
+}
 
 .stage{
   position:relative;
@@ -235,4 +241,23 @@ input{
   border-radius:999px;
   border:1px solid rgba(15,23,42,.12);
   background:rgba(255,255,255,.95);
+}
+
+/* ✅ Start panel */
+.startTitle{
+  text-align:center;
+  font-size:26px;
+  font-weight:950;
+  margin-top:4px;
+}
+.startSub{
+  text-align:center;
+  margin-top:10px;
+  color:var(--muted);
+  font-weight:900;
+}
+.startActions{
+  display:flex;
+  justify-content:center;
+  margin-top:18px;
 }
