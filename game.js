@@ -33,7 +33,6 @@
   const resultBody = document.getElementById("resultBody");
   const podiumEl = document.getElementById("podium");
 
-  // ===== 玩家顯示名稱（全部 P1→玩家一）=====
   const playerName = (n) => ["", "玩家一", "玩家二", "玩家三", "玩家四"][n] || `玩家${n}`;
 
   // ========= Responsive canvas =========
@@ -90,22 +89,15 @@
     { id: "calico", name: "三花貓", desc: "斑斕三色超吸睛",   body: "#f8fafc", belly: "#fde68a", stripe: "#f97316" },
   ];
 
-  // ✅ 四隻貓「不同縮圖」：SVG 依照花紋/配色變化
   function catThumbSVG(cat){
     const isCalico = cat.id === "calico";
     const isTux = cat.id === "tux";
-
     return `
     <svg width="64" height="44" viewBox="0 0 64 44" xmlns="http://www.w3.org/2000/svg">
-      <!-- tail -->
-      <path d="M10 22 C2 14, 4 30, 12 30"
-        fill="none" stroke="${cat.stripe}" stroke-width="4" stroke-linecap="round"/>
-
-      <!-- body -->
+      <path d="M10 22 C2 14, 4 30, 12 30" fill="none" stroke="${cat.stripe}" stroke-width="4" stroke-linecap="round"/>
       <ellipse cx="30" cy="26" rx="18" ry="11" fill="${cat.body}"/>
       <ellipse cx="34" cy="29" rx="10" ry="7" fill="${cat.belly}" opacity="0.95"/>
 
-      <!-- patterns -->
       ${
         isCalico
           ? `
@@ -126,14 +118,9 @@
             `
       }
 
-      <!-- head -->
       <circle cx="48" cy="20" r="7" fill="${cat.body}"/>
-
-      <!-- ears -->
       <path d="M44 15 L46.5 10.5 L48.5 15 Z" fill="${cat.stripe}" opacity="0.95"/>
       <path d="M52 15 L49.5 10.5 L47.5 15 Z" fill="${cat.stripe}" opacity="0.95"/>
-
-      <!-- eyes -->
       <circle cx="46.2" cy="19.5" r="1.4" fill="#111"/>
       <circle cx="49.8" cy="19.5" r="1.4" fill="#111"/>
     </svg>`;
@@ -211,7 +198,6 @@
     hudRoundTime.textContent = String(Math.max(0, Math.ceil(roundSeconds - elapsed)));
   }
 
-  // ===== Reset =====
   function resetRoundState() {
     running = false;
     tPrev = 0;
@@ -247,7 +233,6 @@
     resetRoundState();
   }
 
-  // ===== Player count selection =====
   function setPlayerCount(n) {
     playerCount = n;
     [...countRow.querySelectorAll(".countBtn")].forEach(b => {
@@ -270,7 +255,6 @@
     btn.addEventListener("click", () => setPlayerCount(Number(btn.dataset.n)));
   });
 
-  // ===== Cat picker =====
   function renderCatPicker() {
     catGrid.innerHTML = "";
     CATS.forEach(cat => {
@@ -280,7 +264,7 @@
 
       const thumb = document.createElement("div");
       thumb.className = "catThumb";
-      thumb.innerHTML = catThumbSVG(cat); // ✅ 不同縮圖
+      thumb.innerHTML = catThumbSVG(cat);
 
       const meta = document.createElement("div");
       meta.className = "catMeta";
@@ -443,7 +427,7 @@
 
   function spawnObstacle() {
     const ln = Math.floor(Math.random() * LANES);
-    const s = 62 + Math.random() * 26; // bigger trees
+    const s = 62 + Math.random() * 26;
     obstacles.push({ x: W + 90, lane: ln, w: s, h: s });
   }
 
@@ -527,7 +511,6 @@
     ctx.save();
     ctx.globalAlpha = 1;
 
-    // tail
     ctx.strokeStyle = cat.stripe;
     ctx.lineWidth = Math.max(4, s * 0.10);
     ctx.lineCap = "round";
@@ -536,7 +519,6 @@
     ctx.quadraticCurveTo(x - bodyL*1.00, y - bodyH*0.55, x - bodyL*0.78, y + bodyH*0.18);
     ctx.stroke();
 
-    // legs
     const legY = y + bodyH*0.62;
     const legSwing = phase * (s * 0.20);
     function leg(px, front) {
@@ -553,25 +535,21 @@
     leg(x + bodyL*0.28, true);
     leg(x - bodyL*0.40, false);
 
-    // body
     ctx.fillStyle = cat.body;
     ctx.beginPath();
     ctx.ellipse(x, y, bodyL*0.55, bodyH*0.55, 0, 0, Math.PI*2);
     ctx.fill();
 
-    // belly
     ctx.fillStyle = cat.belly;
     ctx.beginPath();
     ctx.ellipse(x + bodyL*0.12, y + bodyH*0.10, bodyL*0.35, bodyH*0.35, 0, 0, Math.PI*2);
     ctx.fill();
 
-    // head
     const hx = x + bodyL*0.64;
     const hr = s*0.34;
     ctx.fillStyle = cat.body;
     ctx.beginPath(); ctx.arc(hx, y - bodyH*0.18, hr, 0, Math.PI*2); ctx.fill();
 
-    // ears
     ctx.fillStyle = cat.stripe;
     ctx.beginPath();
     ctx.moveTo(hx - hr*0.55, y - bodyH*0.62);
@@ -584,7 +562,6 @@
     ctx.lineTo(hx - hr*0.05, y - bodyH*0.62);
     ctx.fill();
 
-    // eyes
     ctx.fillStyle = "rgba(15,23,42,0.95)";
     ctx.beginPath();
     ctx.arc(hx - hr*0.18, y - bodyH*0.18, 2.6, 0, Math.PI * 2);
@@ -622,6 +599,41 @@
     }
   }
 
+  // ✅ 最後五秒紅色倒數 + 跳動動畫（半透明 50%）
+  function drawFinalCountdownBounce(){
+    const remain = roundSeconds - elapsed;
+    if (remain > 5 || remain <= 0) return;
+
+    // 5~1
+    const n = Math.max(1, Math.min(5, Math.floor(remain) + 1));
+    // 一秒內的進度（0->1），用來做彈跳
+    const frac = remain % 1;            // 例如 4.8 -> 0.8
+    const p = 1 - frac;                 // 0->1
+    // 彈跳曲線：0 到 1 的半個 sin 波（越接近換秒越大）
+    const bounce = Math.sin(p * Math.PI); // 0..1..0
+    const scale = 1 + 0.28 * bounce;
+
+    const sizeBase = Math.floor(Math.min(W, H) * 0.22);
+    const fontSize = Math.floor(sizeBase * scale);
+
+    ctx.save();
+    ctx.globalAlpha = 0.5; // ✅ 半透明 50%
+    ctx.textAlign = "center";
+    ctx.textBaseline = "middle";
+    ctx.font = `900 ${fontSize}px "Microsoft JhengHei","微軟正黑體", system-ui`;
+
+    // 外框白邊
+    ctx.lineWidth = Math.max(10, Math.floor(Math.min(W, H) * 0.02));
+    ctx.strokeStyle = "rgba(255,255,255,0.9)";
+    ctx.strokeText(String(n), W/2, H/2);
+
+    // 紅色字
+    ctx.fillStyle = "rgba(239,68,68,1)";
+    ctx.fillText(String(n), W/2, H/2);
+
+    ctx.restore();
+  }
+
   function drawFrame(dt) {
     drawBackground();
     for (const ob of obstacles) drawObstacle(ob);
@@ -631,9 +643,11 @@
     drawRunningCat(cat, playerX(), playerY(), elapsed);
 
     drawPops(dt);
+
+    // ✅ 最後五秒跳動倒數
+    drawFinalCountdownBounce();
   }
 
-  // ===== loop =====
   function loop(ts) {
     if (!running) return;
 
@@ -706,12 +720,10 @@
     requestAnimationFrame(loop);
   }
 
-  // buttons
   btnStart.addEventListener("click", startRound);
   btnRestart.addEventListener("click", resetMatch);
   btnBackToPick.addEventListener("click", resetMatch);
 
-  // init
   recomputeLanes();
   resizeCanvas();
   resetMatch();
