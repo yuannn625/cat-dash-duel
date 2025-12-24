@@ -12,9 +12,7 @@
       <div>
         <div class="title">🐱 Cat Dash Duel</div>
         <div class="sub">
-          三跑道｜操作：空白鍵（往下循環換道） / ↑↓ 或 W/S（指定換道）｜
-          <b>技能：F</b>（有冷卻）｜
-          中間跑道 = 高風險高報酬
+          三跑道｜空白鍵循環換道｜↑↓ / W/S 指定｜技能 F｜中間跑道高風險高報酬
         </div>
       </div>
 
@@ -26,7 +24,7 @@
         <div class="pill skillPill">
           技能 <span id="hudSkillName">—</span>
           <span class="cdWrap"><span id="hudSkillCD" class="cdBar"></span></span>
-          <span id="hudSkillHint" class="skillHint">F</span>
+          <span class="skillHint">F</span>
         </div>
 
         <button id="btnRestart" class="btn">重置</button>
@@ -36,85 +34,31 @@
     <section class="stage" id="stage">
       <canvas id="game"></canvas>
 
+      <!-- Overlay -->
       <div id="overlay" class="overlay">
         <div class="card" id="overlayCard">
-
-          <!-- ✅ NEW：第一個畫面（先按 START） -->
-          <div id="panelStart" class="panel">
-            <div class="startTitle">🐾 貓咪三跑道衝刺賽</div>
-            <div class="startSub">按下 START → 選玩家人數 → 選貓 → 開跑</div>
-            <div class="startActions">
-              <button class="btn big" id="btnEnter">START</button>
-            </div>
-            <div class="tiny" style="text-align:center;margin-top:10px;">
-              操作：空白鍵循環換道｜↑↓/W/S 指定換道｜技能：F（有冷卻）
-            </div>
-          </div>
-
-          <!-- 選玩家數 + 選貓 -->
-          <div id="panelPick" class="panel hidden">
-            <div class="cardTitle" id="pickTitle">先選擇玩家人數（1～4）</div>
-            <div class="cardBody" id="pickBody">
-              選好人數後，會依序讓 玩家一～玩家四 選貓（不可重複）。
-            </div>
-
-            <div class="countRow" id="countRow">
-              <button class="countBtn" data-n="1">1 位</button>
-              <button class="countBtn" data-n="2">2 位</button>
-              <button class="countBtn" data-n="3">3 位</button>
-              <button class="countBtn" data-n="4">4 位</button>
-            </div>
-
-            <div class="catGrid hidden" id="catGrid"></div>
-            <div class="tiny hidden" id="pickHint">提示：點選貓後會自動切到下一位。</div>
-          </div>
-
-          <!-- 準備開始 -->
-          <div id="panelReady" class="panel hidden">
-            <div class="cardTitle" id="stateTitle">按「開始」進行 玩家一 回合</div>
-            <div class="cardBody" id="stateBody"></div>
-
-            <div class="cardRow">
-              <label class="label">每回合秒數</label>
-              <input id="roundSeconds" type="number" min="5" max="120" step="1" value="20" />
-            </div>
-
-            <div class="cardActions">
-              <button class="btn" id="btnStart">開始</button>
-            </div>
-
-            <div class="tiny" id="scoreboard"></div>
-          </div>
-
-          <!-- 結算 + 頒獎台 -->
-          <div id="panelResult" class="panel hidden">
-            <div class="resultTitle" id="resultTitle">比賽結束！</div>
-            <div class="resultBody" id="resultBody"></div>
-
-            <div class="podiumWrap">
-              <div class="podium" id="podium"></div>
-            </div>
-
-            <div class="resultConfetti">✨🎉✨🎉✨🎉✨</div>
-
+          <div id="panelPick" class="panel">
+            <div class="cardTitle">🐾 貓咪三跑道衝刺賽</div>
+            <div class="cardBody">按 START → 選人數 → 選貓 → 開跑</div>
             <div class="cardActions center">
-              <button class="btn" id="btnBackToPick">再玩一次</button>
+              <button class="btn big" id="btnGoPick">START</button>
             </div>
           </div>
-
         </div>
       </div>
 
       <div class="legend">
-        <span>🐟 +50</span><span>🍗 +100</span><span>🍔 +150</span><span>💣 -100</span>
-        <span><b>中間跑道</b>：樹更多、食物分數 x1.5</span>
-        <span>🧪🧪：兩條命（撞樹扣一瓶）</span>
+        <span>🐟 +50</span>
+        <span>🍗 +100</span>
+        <span>🍔 +150</span>
+        <span>💣 -100</span>
+        <span>🧪×2 撞樹扣一瓶</span>
       </div>
     </section>
 
     <footer class="foot">
-      <span>技巧：想拼高分就多走中間跑道，但樹也更多。</span>
-      <span>技能按 F，冷卻好再用（HUD 有條）。</span>
+      <span>技巧：中間跑道風險高，分數也高。</span>
+      <span>技能 F 有冷卻。</span>
     </footer>
   </main>
 
