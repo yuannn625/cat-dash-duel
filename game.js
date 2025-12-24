@@ -69,11 +69,11 @@
   const speedRamp = 0.020;
   const scorePerSecond = 12;
 
-  // ✅ 風險跑道（中間）
+  // ✅ Risk lane (middle)
   const RISK_LANE = 1;
   const RISK_ITEM_MULT = 1.5;
-  const RISK_OBSTACLE_WEIGHT = 1.6; // 中間更容易出樹
-  const RISK_OBSTACLE_SIZE_MULT = 1.15; // 中間樹更大一點（更難）
+  const RISK_OBSTACLE_WEIGHT = 1.6;
+  const RISK_OBSTACLE_SIZE_MULT = 1.15;
 
   const obstacleBaseInterval = 0.92;
   const obstacleMinInterval = 0.33;
@@ -90,91 +90,8 @@
   ];
   const BOMB = { icon: "💣", value: -100 };
 
-  // ✅ 生命（兩瓶藥水）
+  // ✅ Lives: 2 potions
   const MAX_LIVES = 2;
-
-  // ===== 4 cats + skills =====
-  // 技能按 F，皆有冷卻。技能效果不會太複雜但有策略。
-  const CATS = [
-    {
-      id: "orange",
-      name: "橘貓",
-      desc: "可愛橘橘，活力滿滿",
-      skillName: "衝刺無敵",
-      skillDesc: "2 秒無敵（可硬吃樹），但期間分數獲得 x0.6",
-      cd: 7.5,
-      body: "#f59e0b", belly: "#fde68a", stripe: "#d97706",
-      // runtime skill:
-      onUse: () => activateInvincible(2.0, 0.6),
-    },
-    {
-      id: "tux",
-      name: "黑白貓",
-      desc: "黑白配，酷酷的",
-      skillName: "時間變慢",
-      skillDesc: "1.2 秒世界變慢（更好躲樹），分數照常",
-      cd: 8.5,
-      body: "#0f172a", belly: "#f8fafc", stripe: "#334155",
-      onUse: () => activateSlowmo(1.2, 0.55),
-    },
-    {
-      id: "gray",
-      name: "灰貓",
-      desc: "耐看灰色系",
-      skillName: "瞬間換道",
-      skillDesc: "立刻換到你想要的跑道（↑↓或W/S選），當下無冷卻延遲",
-      cd: 6.5,
-      body: "#64748b", belly: "#e2e8f0", stripe: "#475569",
-      onUse: () => activateDashLane(0.7),
-    },
-    {
-      id: "calico",
-      name: "三花貓",
-      desc: "斑斕三色超吸睛",
-      skillName: "幸運加倍",
-      skillDesc: "3 秒內食物分數 x2（炸彈照扣），適合衝中間跑道",
-      cd: 10.0,
-      body: "#f8fafc", belly: "#fde68a", stripe: "#f97316",
-      onUse: () => activateFoodBoost(3.0, 2.0),
-    },
-  ];
-
-  function catThumbSVG(cat) {
-    const isCalico = cat.id === "calico";
-    const isTux = cat.id === "tux";
-    return `
-    <svg width="70" height="50" viewBox="0 0 70 50" xmlns="http://www.w3.org/2000/svg">
-      <path d="M10 25 C2 16, 4 34, 13 34" fill="none" stroke="${cat.stripe}" stroke-width="4" stroke-linecap="round"/>
-      <ellipse cx="33" cy="30" rx="20" ry="12" fill="${cat.body}"/>
-      <ellipse cx="37" cy="33" rx="11" ry="8" fill="${cat.belly}" opacity="0.95"/>
-
-      ${
-        isCalico
-          ? `
-            <circle cx="25" cy="28" r="4.8" fill="#f97316"/>
-            <circle cx="38" cy="24" r="3.8" fill="#0f172a"/>
-            <circle cx="45" cy="34" r="3.8" fill="#fde68a"/>
-          `
-          : isTux
-            ? `
-              <rect x="21" y="23" width="6" height="18" fill="#ffffff" opacity="0.95"/>
-              <rect x="33" y="21" width="6" height="20" fill="${cat.stripe}" opacity="0.9"/>
-              <rect x="45" y="23" width="6" height="18" fill="#ffffff" opacity="0.95"/>
-            `
-            : `
-              <rect x="23" y="24" width="4" height="14" fill="${cat.stripe}" opacity="0.9"/>
-              <rect x="32" y="22" width="4" height="16" fill="${cat.stripe}" opacity="0.85"/>
-              <rect x="41" y="24" width="4" height="14" fill="${cat.stripe}" opacity="0.9"/>
-            `
-      }
-
-      <circle cx="53" cy="23" r="8" fill="${cat.body}"/>
-      <path d="M48 17 L51 11.5 L53.5 17 Z" fill="${cat.stripe}" opacity="0.95"/>
-      <path d="M58 17 L55 11.5 L52.5 17 Z" fill="${cat.stripe}" opacity="0.95"/>
-      <circle cx="50.8" cy="23" r="1.6" fill="#111"/>
-      <circle cx="55.2" cy="23" r="1.6" fill="#111"/>
-    </svg>`;
-  }
 
   // ===== SFX =====
   let audioCtx = null;
@@ -197,6 +114,85 @@
   const sfxBomb   = () => beep(150, 0.09, "square", 0.06);
   const sfxCrash  = () => beep(180, 0.10, "square", 0.06);
   const sfxSkill  = () => beep(620, 0.07, "sine", 0.06);
+
+  // ===== CATS + Skills =====
+  const CATS = [
+    {
+      id: "orange",
+      name: "橘貓",
+      desc: "可愛橘橘，活力滿滿",
+      skillName: "衝刺無敵",
+      skillDesc: "2 秒無敵（可硬吃樹），但期間分數獲得 x0.6",
+      cd: 7.5,
+      body: "#f59e0b", belly: "#fde68a", stripe: "#d97706",
+      onUse: () => activateInvincible(2.0, 0.6),
+    },
+    {
+      id: "tux",
+      name: "黑白貓",
+      desc: "黑白配，酷酷的",
+      skillName: "時間變慢",
+      skillDesc: "1.2 秒世界變慢（更好躲樹），分數照常",
+      cd: 8.5,
+      body: "#0f172a", belly: "#f8fafc", stripe: "#334155",
+      onUse: () => activateSlowmo(1.2, 0.55),
+    },
+    {
+      id: "gray",
+      name: "灰貓",
+      desc: "耐看灰色系",
+      skillName: "瞬間換道",
+      skillDesc: "0.7 秒內 ↑↓/W/S 立刻換道（不吃冷卻延遲）",
+      cd: 6.5,
+      body: "#64748b", belly: "#e2e8f0", stripe: "#475569",
+      onUse: () => activateDashLane(0.7),
+    },
+    {
+      id: "calico",
+      name: "三花貓",
+      desc: "斑斕三色超吸睛",
+      skillName: "幸運加倍",
+      skillDesc: "3 秒內食物分數 x2（炸彈照扣）",
+      cd: 10.0,
+      body: "#f8fafc", belly: "#fde68a", stripe: "#f97316",
+      onUse: () => activateFoodBoost(3.0, 2.0),
+    },
+  ];
+
+  function catThumbSVG(cat) {
+    const isCalico = cat.id === "calico";
+    const isTux = cat.id === "tux";
+    return `
+    <svg width="70" height="50" viewBox="0 0 70 50" xmlns="http://www.w3.org/2000/svg">
+      <path d="M10 25 C2 16, 4 34, 13 34" fill="none" stroke="${cat.stripe}" stroke-width="4" stroke-linecap="round"/>
+      <ellipse cx="33" cy="30" rx="20" ry="12" fill="${cat.body}"/>
+      <ellipse cx="37" cy="33" rx="11" ry="8" fill="${cat.belly}" opacity="0.95"/>
+      ${
+        isCalico
+          ? `
+            <circle cx="25" cy="28" r="4.8" fill="#f97316"/>
+            <circle cx="38" cy="24" r="3.8" fill="#0f172a"/>
+            <circle cx="45" cy="34" r="3.8" fill="#fde68a"/>
+          `
+          : isTux
+            ? `
+              <rect x="22" y="22" width="7" height="20" fill="#ffffff" opacity="0.95"/>
+              <rect x="33" y="21" width="7" height="21" fill="${cat.stripe}" opacity="0.92"/>
+              <rect x="44" y="22" width="7" height="20" fill="#ffffff" opacity="0.95"/>
+            `
+            : `
+              <rect x="23" y="24" width="4" height="14" fill="${cat.stripe}" opacity="0.9"/>
+              <rect x="32" y="22" width="4" height="16" fill="${cat.stripe}" opacity="0.85"/>
+              <rect x="41" y="24" width="4" height="14" fill="${cat.stripe}" opacity="0.9"/>
+            `
+      }
+      <circle cx="53" cy="23" r="8" fill="${cat.body}"/>
+      <path d="M48 17 L51 11.5 L53.5 17 Z" fill="${cat.stripe}" opacity="0.95"/>
+      <path d="M58 17 L55 11.5 L52.5 17 Z" fill="${cat.stripe}" opacity="0.95"/>
+      <circle cx="50.8" cy="23" r="1.6" fill="#111"/>
+      <circle cx="55.2" cy="23" r="1.6" fill="#111"/>
+    </svg>`;
+  }
 
   // ===== Tournament state =====
   let playerCount = 2;
@@ -224,9 +220,9 @@
   let itemTimer = 0;
   let roundSeconds = 20;
 
-  // ✅ lives / invincibility window after hit
+  // ✅ lives + hit protection
   let lives = MAX_LIVES;
-  let hitInvuln = 0; // seconds after hit (to prevent double-hit)
+  let hitInvuln = 0;     // after hit, ignore obstacles for a while
   let screenShake = 0;
 
   // ✅ skill state
@@ -241,6 +237,7 @@
 
   const clamp = (v,a,b)=>Math.max(a,Math.min(b,v));
   const playerX = ()=> W * playerXRatio;
+  const currentCat = ()=> playerCat[currentPlayer] || CATS[0];
 
   // ===== Panels =====
   function popCard() {
@@ -258,8 +255,7 @@
   }
   function hideOverlay() { overlay.classList.add("hidden"); }
 
-  function currentCat() { return playerCat[currentPlayer] || CATS[0]; }
-
+  // ===== HUD =====
   function updateHUD() {
     hudPlayer.textContent = playerName(currentPlayer);
     hudScore.textContent = String(Math.floor(score));
@@ -268,12 +264,13 @@
     const cat = currentCat();
     hudSkillName.textContent = cat.skillName;
 
-    // CD bar: 0% = ready, 100% = full CD remaining
+    // CD bar: remaining ratio
     const pct = cat.cd > 0 ? clamp(skillCD / cat.cd, 0, 1) : 0;
     hudSkillCD.style.width = `${Math.floor(pct * 100)}%`;
     hudSkillCD.style.background = pct <= 0.001 ? "rgba(34,197,94,1)" : "rgba(239,68,68,1)";
   }
 
+  // ===== Reset =====
   function resetRoundState() {
     running = false;
     tPrev = 0;
@@ -325,6 +322,7 @@
     resetRoundState();
   }
 
+  // ===== Player Count =====
   function setPlayerCount(n) {
     playerCount = n;
     [...countRow.querySelectorAll(".countBtn")].forEach(b => {
@@ -342,11 +340,11 @@
     updateHUD();
     popCard();
   }
-
   [...countRow.querySelectorAll(".countBtn")].forEach(btn => {
     btn.addEventListener("click", () => setPlayerCount(Number(btn.dataset.n)));
   });
 
+  // ===== Cat Picker (修正：確保技能文字一定顯示) =====
   function renderCatPicker() {
     catGrid.innerHTML = "";
     CATS.forEach(cat => {
@@ -371,7 +369,7 @@
 
       const skill = document.createElement("div");
       skill.className = "catSkill";
-      skill.innerHTML = `<b>技能（F｜冷卻 ${cat.cd}s）</b>：${cat.skillDesc}`;
+      skill.textContent = `技能（F｜冷卻 ${cat.cd}s）：${cat.skillDesc}`;
 
       meta.appendChild(name);
       meta.appendChild(desc);
@@ -427,18 +425,39 @@
   }
   function cycleLaneDown() { setLane((lane + 1) % LANES); }
 
+  // ===== Pops =====
+  function addPop(x, y, text, kind, ttl = 0.75) {
+    pops.push({ x, y, text, ttl, vy: -75, scale: 1.7, kind, base: ttl });
+  }
+
+  // ✅ 技能提示：0.5 秒顯示在正中央
+  function toastSkill(text, ok=true) {
+    addPop(W/2, H*0.36, text, ok ? "skillToast" : "cooldownToast", 0.5);
+  }
+
   function tryUseSkill() {
     if (!running) return;
-    if (skillCD > 0) return;
+    if (skillCD > 0) {
+      toastSkill("技能冷卻中…", false);
+      beep(220, 0.06, "square", 0.04);
+      return;
+    }
     const cat = currentCat();
     skillCD = cat.cd;
     sfxSkill();
     cat.onUse?.();
-    addPop(playerX() + 80, playerY() - 50, "SKILL!", "skill");
+    toastSkill("已開啟技能！");
   }
 
   window.addEventListener("keydown", (e) => {
     const k = e.key.toLowerCase();
+
+    // skill
+    if (k === "f") {
+      e.preventDefault();
+      tryUseSkill();
+      return;
+    }
 
     if (e.code === "Space") {
       e.preventDefault();
@@ -447,19 +466,10 @@
       return;
     }
 
-    // ✅ skill key
-    if (k === "f") {
-      e.preventDefault();
-      tryUseSkill();
-      return;
-    }
-
     if (e.code === "ArrowUp" || e.code === "ArrowDown") e.preventDefault();
     if (!running) return;
 
-    // 灰貓：技能期間允許立即指定換道（不吃 cooldown）
     const dashMode = dashLaneWindow > 0;
-
     if (e.code === "ArrowUp" || k === "w") {
       if (dashMode) lane = clamp(lane - 1, 0, 2);
       else setLane(lane - 1);
@@ -482,7 +492,7 @@
   }
   function activateSlowmo(sec, factor) {
     slowmo = Math.max(slowmo, sec);
-    slowFactor = factor; // <1 slower
+    slowFactor = factor;
   }
   function activateFoodBoost(sec, mult) {
     foodBoost = Math.max(foodBoost, sec);
@@ -527,7 +537,6 @@
 
     const first = ranking[0];
     resultTitle.textContent = "比賽結束！";
-
     const lines = ranking.map(r => `${playerName(r.p)} 分數：<b>${r.s}</b>`).join("<br/>");
     resultBody.innerHTML = `${lines}<br/><br/><b style="font-size:18px">🎉 ${playerName(first.p)} 獲勝！</b>`;
 
@@ -571,9 +580,7 @@
     const v = itemBaseInterval - elapsed * 0.012;
     return Math.max(itemMinInterval, v);
   }
-
   function weightedLane() {
-    // ✅ 中間跑道更常出樹：權重加大
     const w = [1.0, RISK_OBSTACLE_WEIGHT, 1.0];
     const sum = w[0] + w[1] + w[2];
     const r = Math.random() * sum;
@@ -581,14 +588,12 @@
     if (r < w[0] + w[1]) return 1;
     return 2;
   }
-
   function spawnObstacle() {
     const ln = weightedLane();
-    let s = 66 + Math.random() * 28; // 整體更大
+    let s = 66 + Math.random() * 28;
     if (ln === RISK_LANE) s *= RISK_OBSTACLE_SIZE_MULT;
     obstacles.push({ x: W + 100, lane: ln, w: s, h: s });
   }
-
   function spawnItem() {
     const ln = Math.floor(Math.random() * LANES);
     if (Math.random() < bombChance) items.push({ x: W + 100, lane: ln, kind: "bomb", icon: BOMB.icon, value: BOMB.value });
@@ -598,16 +603,13 @@
     }
   }
 
-  // ===== Collision / FX =====
+  // ===== Collision / helpers =====
   function rectOverlap(ax, ay, aw, ah, bx, by, bw, bh) {
     return ax < bx + bw && ax + aw > bx && ay < by + bh && ay + ah > by;
   }
   function playerY() {
     const y0 = laneY[0], y2 = laneY[2];
     return y0 + (y2 - y0) * (laneVisual / 2);
-  }
-  function addPop(x, y, text, kind) {
-    pops.push({ x, y, text, ttl: 0.75, vy: -75, scale: 1.7, kind });
   }
 
   // ===== Draw =====
@@ -623,7 +625,6 @@
 
     for (let i = 0; i < LANES; i++) {
       const y = laneY[i];
-      // ✅ 中間跑道更「危險」：色塊更明顯
       ctx.fillStyle =
         i === 0 ? "rgba(167,243,208,0.18)" :
         i === 1 ? "rgba(255,210,110,0.26)" :
@@ -648,7 +649,6 @@
     ctx.beginPath(); ctx.arc(x - size*0.22, y, size*0.30, 0, Math.PI*2); ctx.fill();
     ctx.beginPath(); ctx.arc(x + size*0.22, y, size*0.30, 0, Math.PI*2); ctx.fill();
 
-    // 小亮點
     ctx.fillStyle = "rgba(255,255,255,0.18)";
     ctx.beginPath(); ctx.arc(x - size*0.10, y - size*0.18, size*0.12, 0, Math.PI*2); ctx.fill();
   }
@@ -671,7 +671,6 @@
     const bodyH = s * 0.58;
     const phase = Math.sin(t * 10);
 
-    // invincible 閃一下
     const alpha = invincible > 0 ? (0.65 + 0.35 * Math.sin(t * 24)) : 1;
 
     ctx.save();
@@ -749,13 +748,15 @@
       const p = pops[i];
       p.ttl -= dt;
       p.y += p.vy * dt;
-      const life = clamp(p.ttl / 0.75, 0, 1);
+      const life = clamp(p.ttl / (p.base || 0.75), 0, 1);
 
       ctx.save();
       ctx.globalAlpha = life;
-      const scale = p.scale + (1 - life) * 0.30;
 
-      ctx.font = `${Math.floor(48 * scale)}px "Microsoft JhengHei","微軟正黑體", system-ui`;
+      const isToast = (p.kind === "skillToast" || p.kind === "cooldownToast");
+      const scale = isToast ? (1.0 + 0.20 * Math.sin((1-life) * Math.PI)) : (p.scale + (1 - life) * 0.30);
+
+      ctx.font = `${Math.floor((isToast ? 44 : 48) * scale)}px "Microsoft JhengHei","微軟正黑體", system-ui`;
       ctx.textAlign = "center";
       ctx.textBaseline = "middle";
 
@@ -765,8 +766,8 @@
 
       let fill = "rgba(22,163,74,1)";
       if (p.kind === "bomb") fill = "rgba(239,68,68,1)";
-      if (p.kind === "skill") fill = "rgba(59,130,246,1)";
-      if (p.kind === "hit") fill = "rgba(249,115,22,1)";
+      if (p.kind === "skillToast") fill = "rgba(59,130,246,1)";
+      if (p.kind === "cooldownToast") fill = "rgba(249,115,22,1)";
       ctx.fillStyle = fill;
       ctx.fillText(p.text, p.x, p.y);
 
@@ -776,15 +777,59 @@
     }
   }
 
-  // ✅ 最後五秒跳動倒數（半透明 50%）
+  // ✅ lives: 兩瓶獨立顯示（角落 UI）
+  function drawLives() {
+    const x0 = 16, y0 = 14;
+    const gap = 34;
+
+    ctx.save();
+    ctx.font = `26px "Microsoft JhengHei","微軟正黑體", system-ui, Apple Color Emoji, Segoe UI Emoji`;
+    ctx.textAlign = "left";
+    ctx.textBaseline = "top";
+
+    for (let i = 0; i < MAX_LIVES; i++) {
+      const on = i < lives;
+      // 底板
+      ctx.globalAlpha = 1;
+      ctx.fillStyle = "rgba(255,255,255,0.90)";
+      ctx.strokeStyle = "rgba(15,23,42,0.12)";
+      ctx.lineWidth = 1;
+      const bx = x0 + i * gap - 6;
+      const by = y0 - 4;
+      const bw = 34;
+      const bh = 34;
+      roundRect(bx, by, bw, bh, 10);
+      ctx.fill();
+      ctx.stroke();
+
+      // 藥水本體
+      ctx.globalAlpha = on ? 1 : 0.28;
+      ctx.fillText("🧪", x0 + i * gap, y0);
+    }
+
+    ctx.restore();
+    ctx.globalAlpha = 1;
+  }
+
+  function roundRect(x,y,w,h,r){
+    ctx.beginPath();
+    ctx.moveTo(x+r, y);
+    ctx.arcTo(x+w, y, x+w, y+h, r);
+    ctx.arcTo(x+w, y+h, x, y+h, r);
+    ctx.arcTo(x, y+h, x, y, r);
+    ctx.arcTo(x, y, x+w, y, r);
+    ctx.closePath();
+  }
+
+  // 最後五秒倒數（半透明 50%）
   function drawFinalCountdownBounce() {
     const remain = roundSeconds - elapsed;
     if (!(remain <= 5 && remain > 0)) return;
 
-    const n = Math.ceil(remain);            // 5..1
+    const n = Math.ceil(remain);
     const frac = remain - Math.floor(remain);
     const p = 1 - frac;
-    const bounce = Math.sin(p * Math.PI);   // 0..1..0
+    const bounce = Math.sin(p * Math.PI);
     const scale = 1 + 0.32 * bounce;
 
     const sizeBase = Math.floor(Math.min(W, H) * 0.22);
@@ -810,21 +855,7 @@
     ctx.restore();
   }
 
-  function drawLives() {
-    // 左上角兩瓶藥水
-    const x = 18, y = 18;
-    ctx.save();
-    ctx.textAlign = "left";
-    ctx.textBaseline = "top";
-    ctx.font = `24px "Microsoft JhengHei","微軟正黑體", system-ui, Apple Color Emoji, Segoe UI Emoji`;
-    const full = "🧪".repeat(lives);
-    const empty = "⚪".repeat(MAX_LIVES - lives);
-    ctx.fillText(full + empty, x, y);
-    ctx.restore();
-  }
-
   function drawFrame(dt) {
-    // shake
     if (screenShake > 0) {
       const s = 6 * (screenShake / 0.35);
       const ox = (Math.random() * 2 - 1) * s;
@@ -849,6 +880,19 @@
     drawFinalCountdownBounce();
   }
 
+  // ===== Skill timers apply =====
+  function tickSkillTimers(dt){
+    skillCD = Math.max(0, skillCD - dt);
+    invincible = Math.max(0, invincible - dt);
+    slowmo = Math.max(0, slowmo - dt);
+    foodBoost = Math.max(0, foodBoost - dt);
+    dashLaneWindow = Math.max(0, dashLaneWindow - dt);
+
+    if (invincible <= 0) scoreGainMult = 1.0;
+    if (foodBoost <= 0) foodMult = 1.0;
+    if (slowmo <= 0) slowFactor = 1.0;
+  }
+
   // ===== Main loop =====
   function loop(ts) {
     if (!running) return;
@@ -856,11 +900,9 @@
     const t = ts / 1000;
     let dt = tPrev ? (t - tPrev) : 0;
     tPrev = t;
+    dt = Math.min(dt, 0.05); // prevent huge dt
 
-    // ✅ 防止 tab 切換 / 卡頓造成 dt 爆大
-    dt = Math.min(dt, 0.05);
-
-    // ✅ slowmo：讓「世界」變慢，但操作仍正常
+    // world dt for slowmo
     let worldDT = dt;
     if (slowmo > 0) worldDT *= slowFactor;
 
@@ -873,24 +915,17 @@
     obstacleTimer += worldDT;
     itemTimer += worldDT;
 
-    // skill timers
-    skillCD = Math.max(0, skillCD - dt);
-    invincible = Math.max(0, invincible - dt);
-    slowmo = Math.max(0, slowmo - dt);
-    foodBoost = Math.max(0, foodBoost - dt);
-    dashLaneWindow = Math.max(0, dashLaneWindow - dt);
+    // hit invuln / shake
     hitInvuln = Math.max(0, hitInvuln - dt);
     screenShake = Math.max(0, screenShake - dt);
 
-    // reset temporary multipliers when effect ends
-    if (invincible <= 0) scoreGainMult = 1.0;
-    if (foodBoost <= 0) foodMult = 1.0;
-    if (slowmo <= 0) slowFactor = 1.0;
+    // skill timers
+    tickSkillTimers(dt);
 
-    // score per second affected by orange cat dash
+    // score per second
     score += dt * scorePerSecond * scoreGainMult;
 
-    const speed = baseSpeed * (1 + elapsed * speedRamp);
+    const speed = baseSpeed * speedMult();
 
     if (obstacleTimer >= obstacleInterval()) {
       obstacleTimer = 0;
@@ -904,7 +939,7 @@
       spawnItem();
     }
 
-    // move objects (world time)
+    // move objects
     for (const ob of obstacles) ob.x -= speed * worldDT;
     for (const it of items) it.x -= speed * worldDT;
 
@@ -914,23 +949,20 @@
     // collision
     const px = playerX();
     const py = playerY();
-
-    // hitbox slightly larger (difficulty)
     const playerRect = { x: px - CAT_SIZE*0.65, y: py - CAT_SIZE*0.55, w: CAT_SIZE*1.6, h: CAT_SIZE*1.1 };
 
-    // obstacle collision
+    // ✅ obstacle hit: deduct potion, NOT end unless lives==0
     if (hitInvuln <= 0 && invincible <= 0) {
       for (const ob of obstacles) {
         const oy = laneY[ob.lane];
         const obRect = { x: ob.x - ob.w*0.40, y: oy - ob.h*0.48, w: ob.w*0.80, h: ob.h*0.98 };
         if (rectOverlap(playerRect.x, playerRect.y, playerRect.w, playerRect.h, obRect.x, obRect.y, obRect.w, obRect.h)) {
-          // ✅ 扣一條命，不立刻結束
           lives -= 1;
           sfxCrash();
           screenShake = 0.35;
-          hitInvuln = 0.85; // 短暫保護避免連扣
-          addPop(px, py - 70, "HIT!", "hit");
-          addPop(px + 80, py - 40, "-1🧪", "hit");
+          hitInvuln = 0.90; // ✅ important: prevents instant double hit
+          addPop(px, py - 70, "撞到！", "hit");
+          addPop(px + 90, py - 40, "-1🧪", "hit");
 
           if (lives <= 0) {
             finishRound("生命歸零！");
@@ -941,7 +973,7 @@
       }
     }
 
-    // item collision
+    // items
     for (let i = items.length - 1; i >= 0; i--) {
       const it = items[i];
       const iy = laneY[it.lane];
@@ -949,7 +981,6 @@
       if (rectOverlap(playerRect.x, playerRect.y, playerRect.w, playerRect.h, itRect.x, itRect.y, itRect.w, itRect.h)) {
         items.splice(i, 1);
 
-        // ✅ 中間跑道食物分數 x1.5；三花技能再 x2
         if (it.kind === "food") {
           let add = it.value * foodMult;
           if (lane === RISK_LANE) add *= RISK_ITEM_MULT;
@@ -957,7 +988,7 @@
           sfxFood();
           addPop(px + 90, py - 40, `+${Math.round(add)}`, "food");
         } else {
-          score += it.value; // -100
+          score += it.value;
           sfxBomb();
           addPop(px + 90, py - 40, `-100`, "bomb");
         }
@@ -975,7 +1006,27 @@
     requestAnimationFrame(loop);
   }
 
-  // ===== UI buttons =====
+  // ===== utils =====
+  function speedMult() { return 1 + elapsed * speedRamp; }
+  function obstacleInterval() {
+    const v = obstacleBaseInterval - elapsed * 0.018;
+    return Math.max(obstacleMinInterval, v);
+  }
+  function itemInterval() {
+    const v = itemBaseInterval - elapsed * 0.012;
+    return Math.max(itemMinInterval, v);
+  }
+
+  function weightedLane() {
+    const w = [1.0, RISK_OBSTACLE_WEIGHT, 1.0];
+    const sum = w[0] + w[1] + w[2];
+    const r = Math.random() * sum;
+    if (r < w[0]) return 0;
+    if (r < w[0] + w[1]) return 1;
+    return 2;
+  }
+
+  // ===== Buttons =====
   btnStart.addEventListener("click", startRound);
   btnRestart.addEventListener("click", resetMatch);
   btnBackToPick.addEventListener("click", resetMatch);
