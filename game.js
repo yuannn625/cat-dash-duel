@@ -24,7 +24,6 @@
 
   const btnStart = document.getElementById("btnStart");
   const btnRestart = document.getElementById("btnRestart");
-  const btnRestart2 = document.getElementById("btnRestart2");
   const btnBackToPick = document.getElementById("btnBackToPick");
 
   const stateTitle = document.getElementById("stateTitle");
@@ -91,7 +90,7 @@
   ];
   const BOMB = { icon: "💣", value: -100 };
 
-  // ✅ Lives
+  // ✅ Lives: 2 potions
   const MAX_LIVES = 2;
 
   // ===== SFX =====
@@ -123,10 +122,10 @@
       name: "橘貓",
       desc: "可愛橘橘，活力滿滿",
       skillName: "衝刺無敵",
-      skillDesc: "3 秒無敵（可硬吃樹），但期間分數獲得 x0.6",
+      skillDesc: "2 秒無敵（可硬吃樹），但期間分數獲得 x0.6",
       cd: 7.5,
       body: "#f59e0b", belly: "#fde68a", stripe: "#d97706",
-      onUse: () => activateInvincible(3.0, 0.6), // ✅ 改 3 秒
+      onUse: () => activateInvincible(2.0, 0.6),
     },
     {
       id: "tux",
@@ -142,11 +141,11 @@
       id: "gray",
       name: "灰貓",
       desc: "耐看灰色系",
-      skillName: "磁鐵吸食",
-      skillDesc: "3 秒內同跑道前方食物會被吸過來（更好搶分）",
-      cd: 10.0, // ✅ 冷卻 10 秒
+      skillName: "瞬間換道",
+      skillDesc: "0.7 秒內 ↑↓/W/S 立刻換道（不吃冷卻延遲）",
+      cd: 6.5,
       body: "#64748b", belly: "#e2e8f0", stripe: "#475569",
-      onUse: () => activateMagnet(3.0, 520), // ✅ 3 秒磁鐵、吸力強度
+      onUse: () => activateDashLane(0.7),
     },
     {
       id: "calico",
@@ -223,7 +222,7 @@
 
   // ✅ lives + hit protection
   let lives = MAX_LIVES;
-  let hitInvuln = 0;
+  let hitInvuln = 0;     // after hit, ignore obstacles for a while
   let screenShake = 0;
 
   // ✅ skill state
@@ -234,10 +233,7 @@
   let slowFactor = 1.0;
   let foodBoost = 0;
   let foodMult = 1.0;
-
-  // ✅ magnet
-  let magnetTime = 0;
-  let magnetStrength = 0;
+  let dashLaneWindow = 0;
 
   const clamp = (v,a,b)=>Math.max(a,Math.min(b,v));
   const playerX = ()=> W * playerXRatio;
@@ -268,6 +264,7 @@
     const cat = currentCat();
     hudSkillName.textContent = cat.skillName;
 
+    // CD bar: remaining ratio
     const pct = cat.cd > 0 ? clamp(skillCD / cat.cd, 0, 1) : 0;
     hudSkillCD.style.width = `${Math.floor(pct * 100)}%`;
     hudSkillCD.style.background = pct <= 0.001 ? "rgba(34,197,94,1)" : "rgba(239,68,68,1)";
@@ -301,8 +298,7 @@
     slowFactor = 1.0;
     foodBoost = 0;
     foodMult = 1.0;
-    magnetTime = 0;
-    magnetStrength = 0;
+    dashLaneWindow = 0;
 
     updateHUD();
     drawFrame(0);
@@ -310,8 +306,6 @@
 
   function resetMatch() {
     currentPlayer = 1;
-    playerCount = 2;
-
     picked.clear();
     Object.keys(playerCat).forEach(k => delete playerCat[k]);
     Object.keys(resultScore).forEach(k => delete resultScore[k]);
@@ -350,7 +344,7 @@
     btn.addEventListener("click", () => setPlayerCount(Number(btn.dataset.n)));
   });
 
-  // ===== Cat Picker =====
+  // ===== Cat Picker (修正：確保技能文字一定顯示) =====
   function renderCatPicker() {
     catGrid.innerHTML = "";
     CATS.forEach(cat => {
@@ -414,10 +408,9 @@
     const cat = currentCat();
     stateBody.innerHTML =
       `規則：躲避樹木🌳（中間跑道更危險）。吃到食物加分：🐟 +50 / 🍗 +100 / 🍔 +150；吃到炸彈 💣 扣 100。<br/>
-       <b>中間跑道：</b>樹更多、樹更大、且食物分數 <b>x${RISK_ITEM_MULT}</b>。<b>生命：🧪🧪</b>（撞樹扣 1 瓶，扣光才結束換下一人）。<br/>
+       <b>中間跑道：樹更多、食物分數 x1.5</b>。<b>生命：🧪🧪</b>（撞樹扣 1 瓶，扣光才結束換下一人）。<br/>
        操作：空白鍵 / ↑↓ 或 W/S / 點畫面。<b>技能：F（${cat.skillName}）</b>`;
 
-    scoreboard.textContent = "";
     showPanel(panelReady);
     resetRoundState();
   }
@@ -436,6 +429,8 @@
   function addPop(x, y, text, kind, ttl = 0.75) {
     pops.push({ x, y, text, ttl, vy: -75, scale: 1.7, kind, base: ttl });
   }
+
+  // ✅ 技能提示：0.5 秒顯示在正中央
   function toastSkill(text, ok=true) {
     addPop(W/2, H*0.36, text, ok ? "skillToast" : "cooldownToast", 0.5);
   }
@@ -457,6 +452,7 @@
   window.addEventListener("keydown", (e) => {
     const k = e.key.toLowerCase();
 
+    // skill
     if (k === "f") {
       e.preventDefault();
       tryUseSkill();
@@ -473,8 +469,15 @@
     if (e.code === "ArrowUp" || e.code === "ArrowDown") e.preventDefault();
     if (!running) return;
 
-    if (e.code === "ArrowUp" || k === "w") setLane(lane - 1);
-    if (e.code === "ArrowDown" || k === "s") setLane(lane + 1);
+    const dashMode = dashLaneWindow > 0;
+    if (e.code === "ArrowUp" || k === "w") {
+      if (dashMode) lane = clamp(lane - 1, 0, 2);
+      else setLane(lane - 1);
+    }
+    if (e.code === "ArrowDown" || k === "s") {
+      if (dashMode) lane = clamp(lane + 1, 0, 2);
+      else setLane(lane + 1);
+    }
   });
 
   canvas.addEventListener("pointerdown", () => {
@@ -495,10 +498,8 @@
     foodBoost = Math.max(foodBoost, sec);
     foodMult = mult;
   }
-  function activateMagnet(sec, strength) {
-    magnetTime = Math.max(magnetTime, sec);
-    magnetStrength = strength;
-    addPop(W/2, H*0.44, "🧲 磁鐵啟動！", "skillToast", 0.55);
+  function activateDashLane(sec) {
+    dashLaneWindow = Math.max(dashLaneWindow, sec);
   }
 
   // ===== Start/finish =====
@@ -595,9 +596,8 @@
   }
   function spawnItem() {
     const ln = Math.floor(Math.random() * LANES);
-    if (Math.random() < bombChance) {
-      items.push({ x: W + 100, lane: ln, kind: "bomb", icon: BOMB.icon, value: BOMB.value });
-    } else {
+    if (Math.random() < bombChance) items.push({ x: W + 100, lane: ln, kind: "bomb", icon: BOMB.icon, value: BOMB.value });
+    else {
       const f = FOOD[Math.floor(Math.random() * FOOD.length)];
       items.push({ x: W + 100, lane: ln, kind: "food", icon: f.icon, value: f.value });
     }
@@ -614,6 +614,7 @@
 
   // ===== Draw =====
   function drawBackground() {
+    ctx.globalAlpha = 1;
     ctx.clearRect(0, 0, W, H);
 
     const g = ctx.createLinearGradient(0, 0, 0, H);
@@ -654,53 +655,13 @@
 
   function drawObstacle(ob) { drawTree(ob.x, laneY[ob.lane], ob.w); }
 
-  // ✅ 完全不透明：每次畫 item 都 save/restore + 强制 alpha=1 + source-over
   function drawItem(it) {
-    const y = laneY[it.lane];
     ctx.save();
     ctx.globalAlpha = 1;
-    ctx.globalCompositeOperation = "source-over";
-    ctx.shadowColor = "transparent";
-    ctx.shadowBlur = 0;
-
     ctx.font = `34px "Microsoft JhengHei","微軟正黑體", system-ui, Apple Color Emoji, Segoe UI Emoji`;
     ctx.textAlign = "center";
     ctx.textBaseline = "middle";
-    ctx.fillText(it.icon, it.x, y);
-
-    ctx.restore();
-  }
-
-  function drawMagnetFX(x, y, t) {
-    if (magnetTime <= 0) return;
-    ctx.save();
-    ctx.globalAlpha = 1;
-    ctx.globalCompositeOperation = "source-over";
-    ctx.shadowColor = "transparent";
-    ctx.shadowBlur = 0;
-
-    const pulse = 0.5 + 0.5 * Math.sin(t * 10);
-    const r1 = 18 + pulse * 10;
-    const r2 = 32 + pulse * 12;
-
-    ctx.strokeStyle = "rgba(37,99,235,0.85)";
-    ctx.lineWidth = 4;
-    ctx.beginPath();
-    ctx.arc(x + 18, y - 18, r1, 0, Math.PI * 2);
-    ctx.stroke();
-
-    ctx.strokeStyle = "rgba(59,130,246,0.55)";
-    ctx.lineWidth = 3;
-    ctx.beginPath();
-    ctx.arc(x + 18, y - 18, r2, 0, Math.PI * 2);
-    ctx.stroke();
-
-    ctx.font = `22px "Microsoft JhengHei","微軟正黑體", system-ui, Apple Color Emoji, Segoe UI Emoji`;
-    ctx.textAlign = "center";
-    ctx.textBaseline = "middle";
-    ctx.fillStyle = "rgba(37,99,235,1)";
-    ctx.fillText("🧲", x + 18, y - 18);
-
+    ctx.fillText(it.icon, it.x, laneY[it.lane]);
     ctx.restore();
   }
 
@@ -790,16 +751,11 @@
       const life = clamp(p.ttl / (p.base || 0.75), 0, 1);
 
       ctx.save();
-      ctx.globalAlpha = 1; // ✅ 不讓 pops 污染後面
-      ctx.globalCompositeOperation = "source-over";
-      ctx.shadowColor = "transparent";
-      ctx.shadowBlur = 0;
+      ctx.globalAlpha = life;
 
       const isToast = (p.kind === "skillToast" || p.kind === "cooldownToast");
       const scale = isToast ? (1.0 + 0.20 * Math.sin((1-life) * Math.PI)) : (p.scale + (1 - life) * 0.30);
-      const alpha = life;
 
-      ctx.globalAlpha = alpha;
       ctx.font = `${Math.floor((isToast ? 44 : 48) * scale)}px "Microsoft JhengHei","微軟正黑體", system-ui`;
       ctx.textAlign = "center";
       ctx.textBaseline = "middle";
@@ -810,7 +766,7 @@
 
       let fill = "rgba(22,163,74,1)";
       if (p.kind === "bomb") fill = "rgba(239,68,68,1)";
-      if (p.kind === "skillToast") fill = "rgba(37,99,235,1)";
+      if (p.kind === "skillToast") fill = "rgba(59,130,246,1)";
       if (p.kind === "cooldownToast") fill = "rgba(249,115,22,1)";
       ctx.fillStyle = fill;
       ctx.fillText(p.text, p.x, p.y);
@@ -819,6 +775,40 @@
 
       if (p.ttl <= 0) pops.splice(i, 1);
     }
+  }
+
+  // ✅ lives: 兩瓶獨立顯示（角落 UI）
+  function drawLives() {
+    const x0 = 16, y0 = 14;
+    const gap = 34;
+
+    ctx.save();
+    ctx.font = `26px "Microsoft JhengHei","微軟正黑體", system-ui, Apple Color Emoji, Segoe UI Emoji`;
+    ctx.textAlign = "left";
+    ctx.textBaseline = "top";
+
+    for (let i = 0; i < MAX_LIVES; i++) {
+      const on = i < lives;
+      // 底板
+      ctx.globalAlpha = 1;
+      ctx.fillStyle = "rgba(255,255,255,0.90)";
+      ctx.strokeStyle = "rgba(15,23,42,0.12)";
+      ctx.lineWidth = 1;
+      const bx = x0 + i * gap - 6;
+      const by = y0 - 4;
+      const bw = 34;
+      const bh = 34;
+      roundRect(bx, by, bw, bh, 10);
+      ctx.fill();
+      ctx.stroke();
+
+      // 藥水本體
+      ctx.globalAlpha = on ? 1 : 0.28;
+      ctx.fillText("🧪", x0 + i * gap, y0);
+    }
+
+    ctx.restore();
+    ctx.globalAlpha = 1;
   }
 
   function roundRect(x,y,w,h,r){
@@ -831,42 +821,7 @@
     ctx.closePath();
   }
 
-  function drawLives() {
-    const x0 = 16, y0 = 14;
-    const gap = 34;
-
-    ctx.save();
-    ctx.globalAlpha = 1;
-    ctx.globalCompositeOperation = "source-over";
-    ctx.shadowColor = "transparent";
-    ctx.shadowBlur = 0;
-
-    ctx.font = `26px "Microsoft JhengHei","微軟正黑體", system-ui, Apple Color Emoji, Segoe UI Emoji`;
-    ctx.textAlign = "left";
-    ctx.textBaseline = "top";
-
-    for (let i = 0; i < MAX_LIVES; i++) {
-      const on = i < lives;
-
-      ctx.fillStyle = "rgba(255,255,255,0.90)";
-      ctx.strokeStyle = "rgba(15,23,42,0.12)";
-      ctx.lineWidth = 1;
-      const bx = x0 + i * gap - 6;
-      const by = y0 - 4;
-      const bw = 34;
-      const bh = 34;
-      roundRect(bx, by, bw, bh, 10);
-      ctx.fill();
-      ctx.stroke();
-
-      ctx.globalAlpha = on ? 1 : 0.28;
-      ctx.fillText("🧪", x0 + i * gap, y0);
-      ctx.globalAlpha = 1;
-    }
-
-    ctx.restore();
-  }
-
+  // 最後五秒倒數（半透明 50%）
   function drawFinalCountdownBounce() {
     const remain = roundSeconds - elapsed;
     if (!(remain <= 5 && remain > 0)) return;
@@ -882,8 +837,6 @@
 
     ctx.save();
     ctx.globalAlpha = 0.5;
-    ctx.globalCompositeOperation = "source-over";
-
     ctx.textAlign = "center";
     ctx.textBaseline = "middle";
     ctx.font = `900 ${fontSize}px "Microsoft JhengHei","微軟正黑體", system-ui`;
@@ -902,65 +855,42 @@
     ctx.restore();
   }
 
-  // ✅ 關鍵：每幀 sandbox（完全杜絕透明污染）
   function drawFrame(dt) {
-    ctx.save();
-    ctx.globalAlpha = 1;
-    ctx.globalCompositeOperation = "source-over";
-    ctx.shadowColor = "transparent";
-    ctx.shadowBlur = 0;
-    ctx.shadowOffsetX = 0;
-    ctx.shadowOffsetY = 0;
-
     if (screenShake > 0) {
       const s = 6 * (screenShake / 0.35);
       const ox = (Math.random() * 2 - 1) * s;
       const oy = (Math.random() * 2 - 1) * s;
-
       ctx.save();
       ctx.translate(ox, oy);
-
       drawBackground();
       for (const ob of obstacles) drawObstacle(ob);
       for (const it of items) drawItem(it);
-
-      const px = playerX();
-      const py = playerY();
-      drawRunningCat(currentCat(), px, py, elapsed);
-      drawMagnetFX(px, py, elapsed);
+      drawRunningCat(currentCat(), playerX(), playerY(), elapsed);
       drawPops(dt);
-
       ctx.restore();
     } else {
       drawBackground();
       for (const ob of obstacles) drawObstacle(ob);
       for (const it of items) drawItem(it);
-
-      const px = playerX();
-      const py = playerY();
-      drawRunningCat(currentCat(), px, py, elapsed);
-      drawMagnetFX(px, py, elapsed);
+      drawRunningCat(currentCat(), playerX(), playerY(), elapsed);
       drawPops(dt);
     }
 
     drawLives();
     drawFinalCountdownBounce();
-
-    ctx.restore();
   }
 
-  // ===== Skill timers =====
+  // ===== Skill timers apply =====
   function tickSkillTimers(dt){
     skillCD = Math.max(0, skillCD - dt);
     invincible = Math.max(0, invincible - dt);
     slowmo = Math.max(0, slowmo - dt);
     foodBoost = Math.max(0, foodBoost - dt);
-    magnetTime = Math.max(0, magnetTime - dt);
+    dashLaneWindow = Math.max(0, dashLaneWindow - dt);
 
     if (invincible <= 0) scoreGainMult = 1.0;
     if (foodBoost <= 0) foodMult = 1.0;
     if (slowmo <= 0) slowFactor = 1.0;
-    if (magnetTime <= 0) magnetStrength = 0;
   }
 
   // ===== Main loop =====
@@ -970,9 +900,9 @@
     const t = ts / 1000;
     let dt = tPrev ? (t - tPrev) : 0;
     tPrev = t;
-    dt = Math.min(dt, 0.05);
+    dt = Math.min(dt, 0.05); // prevent huge dt
 
-    // slowmo affects world
+    // world dt for slowmo
     let worldDT = dt;
     if (slowmo > 0) worldDT *= slowFactor;
 
@@ -981,17 +911,21 @@
 
     laneVisual += (lane - laneVisual) * 0.18;
 
+    // timers
     obstacleTimer += worldDT;
     itemTimer += worldDT;
 
+    // hit invuln / shake
     hitInvuln = Math.max(0, hitInvuln - dt);
     screenShake = Math.max(0, screenShake - dt);
 
+    // skill timers
     tickSkillTimers(dt);
 
+    // score per second
     score += dt * scorePerSecond * scoreGainMult;
 
-    const speed = baseSpeed * (1 + elapsed * speedRamp);
+    const speed = baseSpeed * speedMult();
 
     if (obstacleTimer >= obstacleInterval()) {
       obstacleTimer = 0;
@@ -1005,35 +939,19 @@
       spawnItem();
     }
 
-    // move obstacles
+    // move objects
     for (const ob of obstacles) ob.x -= speed * worldDT;
+    for (const it of items) it.x -= speed * worldDT;
 
-    // move items + magnet
+    while (obstacles.length && obstacles[0].x < -220) obstacles.shift();
+    while (items.length && items[0].x < -220) items.shift();
+
+    // collision
     const px = playerX();
-    for (const it of items) {
-      let extraPull = 0;
-
-      // ✅ magnet: only pulls FOOD, same lane, and ahead of player within range
-      if (magnetTime > 0 && it.kind === "food" && it.lane === lane) {
-        const dx = it.x - px;
-        if (dx > 0 && dx < 320) {
-          // stronger when closer
-          const closeness = 1 - dx / 320;
-          extraPull = magnetStrength * closeness;
-        }
-      }
-
-      it.x -= (speed * worldDT + extraPull * worldDT);
-    }
-
-    while (obstacles.length && obstacles[0].x < -240) obstacles.shift();
-    while (items.length && items[0].x < -240) items.shift();
-
-    // player rect
     const py = playerY();
     const playerRect = { x: px - CAT_SIZE*0.65, y: py - CAT_SIZE*0.55, w: CAT_SIZE*1.6, h: CAT_SIZE*1.1 };
 
-    // obstacle collision (only if not invincible and not in post-hit invuln)
+    // ✅ obstacle hit: deduct potion, NOT end unless lives==0
     if (hitInvuln <= 0 && invincible <= 0) {
       for (const ob of obstacles) {
         const oy = laneY[ob.lane];
@@ -1042,7 +960,7 @@
           lives -= 1;
           sfxCrash();
           screenShake = 0.35;
-          hitInvuln = 0.90;
+          hitInvuln = 0.90; // ✅ important: prevents instant double hit
           addPop(px, py - 70, "撞到！", "hit");
           addPop(px + 90, py - 40, "-1🧪", "hit");
 
@@ -1055,7 +973,7 @@
       }
     }
 
-    // item collision
+    // items
     for (let i = items.length - 1; i >= 0; i--) {
       const it = items[i];
       const iy = laneY[it.lane];
@@ -1088,10 +1006,29 @@
     requestAnimationFrame(loop);
   }
 
-  // ===== Controls =====
+  // ===== utils =====
+  function speedMult() { return 1 + elapsed * speedRamp; }
+  function obstacleInterval() {
+    const v = obstacleBaseInterval - elapsed * 0.018;
+    return Math.max(obstacleMinInterval, v);
+  }
+  function itemInterval() {
+    const v = itemBaseInterval - elapsed * 0.012;
+    return Math.max(itemMinInterval, v);
+  }
+
+  function weightedLane() {
+    const w = [1.0, RISK_OBSTACLE_WEIGHT, 1.0];
+    const sum = w[0] + w[1] + w[2];
+    const r = Math.random() * sum;
+    if (r < w[0]) return 0;
+    if (r < w[0] + w[1]) return 1;
+    return 2;
+  }
+
+  // ===== Buttons =====
   btnStart.addEventListener("click", startRound);
   btnRestart.addEventListener("click", resetMatch);
-  btnRestart2.addEventListener("click", resetMatch);
   btnBackToPick.addEventListener("click", resetMatch);
 
   // ===== init =====
