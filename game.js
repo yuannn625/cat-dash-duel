@@ -658,8 +658,12 @@
     if (!running) return;
 
     const t = ts / 1000;
-    const dt = tPrev ? (t - tPrev) : 0;
-    tPrev = t;
+    let dt = tPrev ? (t - tPrev) : 0;
+tPrev = t;
+
+// ✅ 防止切分頁/卡頓導致 dt 爆大，跳過倒數
+dt = Math.min(dt, 0.05);
+
 
     elapsed += dt;
     cooldown = Math.max(0, cooldown - dt);
