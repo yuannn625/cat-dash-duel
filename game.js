@@ -599,40 +599,46 @@
     }
   }
 
-  // ✅ 最後五秒紅色倒數 + 跳動動畫（半透明 50%）
   function drawFinalCountdownBounce(){
-    const remain = roundSeconds - elapsed;
-    if (remain > 5 || remain <= 0) return;
+  const remain = roundSeconds - elapsed;
 
-    // 5~1
-    const n = Math.max(1, Math.min(5, Math.floor(remain) + 1));
-    // 一秒內的進度（0->1），用來做彈跳
-    const frac = remain % 1;            // 例如 4.8 -> 0.8
-    const p = 1 - frac;                 // 0->1
-    // 彈跳曲線：0 到 1 的半個 sin 波（越接近換秒越大）
-    const bounce = Math.sin(p * Math.PI); // 0..1..0
-    const scale = 1 + 0.28 * bounce;
+  // ✅ 用 <= 5 確保最後五秒一定會畫
+  if (!(remain <= 5 && remain > 0)) return;
 
-    const sizeBase = Math.floor(Math.min(W, H) * 0.22);
-    const fontSize = Math.floor(sizeBase * scale);
+  const n = Math.ceil(remain);   // 5,4,3,2,1
+  const frac = remain - Math.floor(remain); // 0~1
+  const p = 1 - frac;            // 0->1
+  const bounce = Math.sin(p * Math.PI); // 0..1..0
+  const scale = 1 + 0.32 * bounce;
 
-    ctx.save();
-    ctx.globalAlpha = 0.5; // ✅ 半透明 50%
-    ctx.textAlign = "center";
-    ctx.textBaseline = "middle";
-    ctx.font = `900 ${fontSize}px "Microsoft JhengHei","微軟正黑體", system-ui`;
+  const sizeBase = Math.floor(Math.min(W, H) * 0.22);
+  const fontSize = Math.floor(sizeBase * scale);
 
-    // 外框白邊
-    ctx.lineWidth = Math.max(10, Math.floor(Math.min(W, H) * 0.02));
-    ctx.strokeStyle = "rgba(255,255,255,0.9)";
-    ctx.strokeText(String(n), W/2, H/2);
+  ctx.save();
 
-    // 紅色字
-    ctx.fillStyle = "rgba(239,68,68,1)";
-    ctx.fillText(String(n), W/2, H/2);
+  // ✅ 仍然半透明（50%），但加陰影讓它非常清楚
+  ctx.globalAlpha = 0.5;
+  ctx.textAlign = "center";
+  ctx.textBaseline = "middle";
+  ctx.font = `900 ${fontSize}px "Microsoft JhengHei","微軟正黑體", system-ui`;
 
-    ctx.restore();
-  }
+  // ✅ 陰影（不受 alpha 影響太多，會更顯眼）
+  ctx.shadowColor = "rgba(0,0,0,0.35)";
+  ctx.shadowBlur = 18;
+  ctx.shadowOffsetY = 6;
+
+  // 白邊
+  ctx.lineWidth = Math.max(10, Math.floor(Math.min(W, H) * 0.02));
+  ctx.strokeStyle = "rgba(255,255,255,0.95)";
+  ctx.strokeText(String(n), W/2, H/2);
+
+  // 紅字
+  ctx.fillStyle = "rgba(239,68,68,1)";
+  ctx.fillText(String(n), W/2, H/2);
+
+  ctx.restore();
+}
+
 
   function drawFrame(dt) {
     drawBackground();
