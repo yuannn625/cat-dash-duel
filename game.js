@@ -656,14 +656,24 @@
   function drawObstacle(ob) { drawTree(ob.x, laneY[ob.lane], ob.w); }
 
   function drawItem(it) {
-    ctx.save();
-    ctx.globalAlpha = 1;
-    ctx.font = `34px "Microsoft JhengHei","微軟正黑體", system-ui, Apple Color Emoji, Segoe UI Emoji`;
-    ctx.textAlign = "center";
-    ctx.textBaseline = "middle";
-    ctx.fillText(it.icon, it.x, laneY[it.lane]);
-    ctx.restore();
-  }
+  const y = laneY[it.lane];
+
+  // ✅ 保證不透明（不吃到前面任何 globalAlpha/陰影設定）
+  ctx.save();
+  ctx.globalAlpha = 1;
+  ctx.shadowColor = "transparent";
+  ctx.shadowBlur = 0;
+  ctx.shadowOffsetX = 0;
+  ctx.shadowOffsetY = 0;
+
+  ctx.font = `34px "Microsoft JhengHei","微軟正黑體", system-ui, Apple Color Emoji, Segoe UI Emoji`;
+  ctx.textAlign = "center";
+  ctx.textBaseline = "middle";
+  ctx.fillText(it.icon, it.x, y);
+
+  ctx.restore();
+}
+
 
   function drawRunningCat(cat, x, y, t) {
     const s = CAT_SIZE;
