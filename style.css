@@ -12,7 +12,7 @@ html,body{ height:100%; }
 
 body{
   margin:0;
-  overflow:hidden; /* 防止 Space/Arrow 造成頁面捲動跳動 */
+  overflow:hidden;
   font-family:"Microsoft JhengHei","微軟正黑體",system-ui,Arial,sans-serif;
   color:var(--ink);
   background:
@@ -138,7 +138,6 @@ input{
   grid-template-columns: repeat(2, minmax(0,1fr));
   gap:10px;
 }
-
 .catBtn{
   display:flex;
   align-items:center;
@@ -148,11 +147,8 @@ input{
   border:1px solid rgba(15,23,42,.12);
   background:rgba(255,255,255,.98);
   cursor:pointer;
-
-  /* ✅ 修正：整張卡內容靠左 */
   justify-content:flex-start;
 }
-
 .catBtn:hover{ filter:brightness(1.01); }
 .catBtn.disabled{ opacity:.45; cursor:not-allowed; }
 
@@ -162,7 +158,6 @@ input{
   border:1px solid rgba(15,23,42,.10);
   background:rgba(240,250,255,.85);
   display:flex; align-items:center; justify-content:center;
-  font-weight:900;
   flex:0 0 auto;
 }
 .catThumb svg{ display:block; }
@@ -170,13 +165,10 @@ input{
 .catMeta{
   display:flex;
   flex-direction:column;
-
-  /* ✅ 修正：文字確實左對齊（橘貓也不會歪） */
   align-items:flex-start;
   text-align:left;
   width:100%;
 }
-
 .catName{ font-weight:950; width:100%; text-align:left; }
 .catDesc{ font-size:12px; color:var(--muted); margin-top:4px; line-height:1.35; width:100%; text-align:left; }
 
