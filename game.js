@@ -12,10 +12,13 @@
   const overlay = document.getElementById("overlay");
   const overlayCard = document.getElementById("overlayCard");
 
-  const panelStart = document.getElementById("panelStart");     // ✅ NEW
+  // panels
+  const panelBoot = document.getElementById("panelBoot");
   const panelPick = document.getElementById("panelPick");
   const panelReady = document.getElementById("panelReady");
   const panelResult = document.getElementById("panelResult");
+
+  const btnBootStart = document.getElementById("btnBootStart");
 
   const pickTitle = document.getElementById("pickTitle");
   const pickBody = document.getElementById("pickBody");
@@ -23,7 +26,6 @@
   const catGrid = document.getElementById("catGrid");
   const pickHint = document.getElementById("pickHint");
 
-  const btnEnter = document.getElementById("btnEnter");         // ✅ NEW
   const btnStart = document.getElementById("btnStart");
   const btnRestart = document.getElementById("btnRestart");
   const btnBackToPick = document.getElementById("btnBackToPick");
@@ -117,6 +119,27 @@
   const sfxCrash  = () => beep(180, 0.10, "square", 0.06);
   const sfxSkill  = () => beep(620, 0.07, "sine", 0.06);
 
+  // ===== Skill effects state =====
+  let skillCD = 0;
+
+  // orange invincible
+  let invincible = 0;
+  let scoreGainMult = 1.0;
+
+  // tux slowmo
+  let slowmo = 0;
+  let slowFactor = 1.0;
+
+  // calico food boost
+  let foodBoost = 0;
+  let foodMult = 1.0;
+
+  // gray magnet
+  let magnet = 0;
+  const MAGNET_RANGE_X = 220;   // 吸附範圍（左右）
+  const MAGNET_RANGE_Y = 80;    // 吸附範圍（垂直）
+  const MAGNET_PULL = 920;      // 吸力（像素/秒）
+
   // ===== CATS + Skills =====
   const CATS = [
     {
@@ -143,8 +166,8 @@
       id: "gray",
       name: "灰貓",
       desc: "耐看灰色系",
-      skillName: "磁鐵吸食物",
-      skillDesc: "3 秒內同跑道附近食物會被吸過來（更好搶分）",
+      skillName: "磁鐵吸附",
+      skillDesc: "3 秒內同跑道附近食物會被吸過來（更偏搶分）",
       cd: 10.0,
       body: "#64748b", belly: "#e2e8f0", stripe: "#475569",
       onUse: () => activateMagnet(3.0),
@@ -164,8 +187,15 @@
   function catThumbSVG(cat) {
     const isCalico = cat.id === "calico";
     const isTux = cat.id === "tux";
-    const isOrange = cat.id === "orange";
     const isGray = cat.id === "gray";
+    const isOrange = cat.id === "orange";
+
+    // ✅ 四隻圖不一樣：用 pattern 差異化（不再長一樣）
+    const extra =
+      isGray ? `<circle cx="36" cy="28" r="5.2" fill="#94a3b8" opacity="0.95"/>` :
+      isOrange ? `<circle cx="36" cy="28" r="5.2" fill="#fb923c" opacity="0.95"/>` :
+      "";
+
     return `
     <svg width="70" height="50" viewBox="0 0 70 50" xmlns="http://www.w3.org/2000/svg">
       <path d="M10 25 C2 16, 4 34, 13 34" fill="none" stroke="${cat.stripe}" stroke-width="4" stroke-linecap="round"/>
@@ -180,31 +210,20 @@
           `
           : isTux
             ? `
-              <rect x="22" y="22" width="7" height="20" fill="#ffffff" opacity="0.98"/>
-              <rect x="33" y="21" width="7" height="21" fill="${cat.stripe}" opacity="0.98"/>
-              <rect x="44" y="22" width="7" height="20" fill="#ffffff" opacity="0.98"/>
+              <rect x="22" y="22" width="7" height="20" fill="#ffffff" opacity="0.95"/>
+              <rect x="33" y="21" width="7" height="21" fill="${cat.stripe}" opacity="0.92"/>
+              <rect x="44" y="22" width="7" height="20" fill="#ffffff" opacity="0.95"/>
             `
-            : isOrange
-              ? `
-                <rect x="23" y="24" width="4" height="14" fill="${cat.stripe}" opacity="0.98"/>
-                <rect x="32" y="22" width="4" height="16" fill="${cat.stripe}" opacity="0.98"/>
-                <rect x="41" y="24" width="4" height="14" fill="${cat.stripe}" opacity="0.98"/>
-                <circle cx="29" cy="29" r="2.2" fill="#fff" opacity="0.65"/>
-              `
-              : isGray
-                ? `
-                  <rect x="24" y="25" width="18" height="4" rx="2" fill="${cat.stripe}" opacity="0.98"/>
-                  <rect x="24" y="31" width="18" height="4" rx="2" fill="${cat.stripe}" opacity="0.98"/>
-                `
-                : `
-                  <rect x="23" y="24" width="4" height="14" fill="${cat.stripe}" opacity="0.95"/>
-                  <rect x="32" y="22" width="4" height="16" fill="${cat.stripe}" opacity="0.92"/>
-                  <rect x="41" y="24" width="4" height="14" fill="${cat.stripe}" opacity="0.95"/>
-                `
+            : `
+              <rect x="23" y="24" width="4" height="14" fill="${cat.stripe}" opacity="0.9"/>
+              <rect x="32" y="22" width="4" height="16" fill="${cat.stripe}" opacity="0.85"/>
+              <rect x="41" y="24" width="4" height="14" fill="${cat.stripe}" opacity="0.9"/>
+            `
       }
+      ${extra}
       <circle cx="53" cy="23" r="8" fill="${cat.body}"/>
-      <path d="M48 17 L51 11.5 L53.5 17 Z" fill="${cat.stripe}" opacity="0.98"/>
-      <path d="M58 17 L55 11.5 L52.5 17 Z" fill="${cat.stripe}" opacity="0.98"/>
+      <path d="M48 17 L51 11.5 L53.5 17 Z" fill="${cat.stripe}" opacity="0.95"/>
+      <path d="M58 17 L55 11.5 L52.5 17 Z" fill="${cat.stripe}" opacity="0.95"/>
       <circle cx="50.8" cy="23" r="1.6" fill="#111"/>
       <circle cx="55.2" cy="23" r="1.6" fill="#111"/>
     </svg>`;
@@ -238,20 +257,8 @@
 
   // ✅ lives + hit protection
   let lives = MAX_LIVES;
-  let hitInvuln = 0;
+  let hitInvuln = 0;     // after hit, ignore obstacles for a while
   let screenShake = 0;
-
-  // ✅ skill state
-  let skillCD = 0;
-  let invincible = 0;
-  let scoreGainMult = 1.0;
-  let slowmo = 0;
-  let slowFactor = 1.0;
-  let foodBoost = 0;
-  let foodMult = 1.0;
-
-  // ✅ NEW: magnet
-  let magnet = 0;
 
   const clamp = (v,a,b)=>Math.max(a,Math.min(b,v));
   const playerX = ()=> W * playerXRatio;
@@ -265,10 +272,12 @@
   }
   function showPanel(panel) {
     overlay.classList.remove("hidden");
-    panelStart.classList.add("hidden");
+
+    panelBoot.classList.add("hidden");
     panelPick.classList.add("hidden");
     panelReady.classList.add("hidden");
     panelResult.classList.add("hidden");
+
     panel.classList.remove("hidden");
     popCard();
   }
@@ -283,6 +292,7 @@
     const cat = currentCat();
     hudSkillName.textContent = cat.skillName;
 
+    // CD bar: remaining ratio
     const pct = cat.cd > 0 ? clamp(skillCD / cat.cd, 0, 1) : 0;
     hudSkillCD.style.width = `${Math.floor(pct * 100)}%`;
     hudSkillCD.style.background = pct <= 0.001 ? "rgba(34,197,94,1)" : "rgba(239,68,68,1)";
@@ -309,6 +319,7 @@
     hitInvuln = 0;
     screenShake = 0;
 
+    // skill state reset
     skillCD = 0;
     invincible = 0;
     scoreGainMult = 1.0;
@@ -316,7 +327,6 @@
     slowFactor = 1.0;
     foodBoost = 0;
     foodMult = 1.0;
-
     magnet = 0;
 
     updateHUD();
@@ -337,14 +347,13 @@
     [...countRow.querySelectorAll(".countBtn")].forEach(b => b.classList.remove("active"));
     countRow.classList.remove("hidden");
 
-    // ✅ FIRST SCREEN: Start
-    showPanel(panelStart);
-
+    // ✅ 最前面先顯示 Boot START
+    showPanel(panelBoot);
     resetRoundState();
   }
 
-  // ===== Start button -> pick players =====
-  btnEnter.addEventListener("click", () => {
+  // ===== Boot Start =====
+  btnBootStart.addEventListener("click", () => {
     showPanel(panelPick);
   });
 
@@ -370,6 +379,7 @@
     btn.addEventListener("click", () => setPlayerCount(Number(btn.dataset.n)));
   });
 
+  // ===== Cat Picker =====
   function renderCatPicker() {
     catGrid.innerHTML = "";
     CATS.forEach(cat => {
@@ -394,7 +404,7 @@
 
       const skill = document.createElement("div");
       skill.className = "catSkill";
-      skill.innerHTML = `技能（<b>F</b>｜冷卻 <b>${cat.cd}s</b>）：${cat.skillDesc}`;
+      skill.textContent = `技能（F｜冷卻 ${cat.cd}s）：${cat.skillDesc}`;
 
       meta.appendChild(name);
       meta.appendChild(desc);
@@ -454,6 +464,8 @@
   function addPop(x, y, text, kind, ttl = 0.75) {
     pops.push({ x, y, text, ttl, vy: -75, scale: 1.7, kind, base: ttl });
   }
+
+  // 技能提示：0.5 秒顯示在正中央
   function toastSkill(text, ok=true) {
     addPop(W/2, H*0.36, text, ok ? "skillToast" : "cooldownToast", 0.5);
   }
@@ -481,10 +493,12 @@
       return;
     }
 
+    // ✅ overlay 期間不要亂觸發 startRound（避免「按空白鍵=開始」干擾你按鈕）
+    if (!overlay.classList.contains("hidden")) return;
+
     if (e.code === "Space") {
       e.preventDefault();
-      if (!running && !overlay.classList.contains("hidden")) startRound();
-      else if (running) cycleLaneDown();
+      if (running) cycleLaneDown();
       return;
     }
 
@@ -496,8 +510,9 @@
   });
 
   canvas.addEventListener("pointerdown", () => {
-    if (!running && !overlay.classList.contains("hidden")) startRound();
-    else if (running) cycleLaneDown();
+    // ✅ overlay 期間不要讓點畫面開始，避免你只想點按鈕卻被 canvas 吃掉
+    if (!overlay.classList.contains("hidden")) return;
+    if (running) cycleLaneDown();
   });
 
   // ===== Skill effects =====
@@ -520,6 +535,7 @@
   // ===== Start/finish =====
   function startRound() {
     if (running) return;
+
     roundSeconds = parseInt(roundSecondsInput.value || "20", 10);
     if (!Number.isFinite(roundSeconds) || roundSeconds < 5) roundSeconds = 20;
 
@@ -630,6 +646,7 @@
   // ===== Draw =====
   function drawBackground() {
     ctx.globalAlpha = 1;
+    ctx.setTransform(1,0,0,1,0,0); // 保險：清掉 transform 汙染
     ctx.clearRect(0, 0, W, H);
 
     const g = ctx.createLinearGradient(0, 0, 0, H);
@@ -668,38 +685,22 @@
     ctx.beginPath(); ctx.arc(x - size*0.10, y - size*0.18, size*0.12, 0, Math.PI*2); ctx.fill();
   }
 
-  function drawObstacle(ob) { ctx.globalAlpha = 1; drawTree(ob.x, laneY[ob.lane], ob.w); }
+  function drawObstacle(ob) { drawTree(ob.x, laneY[ob.lane], ob.w); }
 
-  // ✅ FOOD 完全不透明：改成「實心徽章 + emoji」，不會再半透明
+  // ✅ 食物：100% 不透明 + 不要任何多餘圈圈（強制清 filter/shadow）
   function drawItem(it) {
-    const x = it.x;
-    const y = laneY[it.lane];
-
     ctx.save();
     ctx.globalAlpha = 1;
+    ctx.shadowColor = "transparent";
+    ctx.shadowBlur = 0;
+    ctx.filter = "none";
 
-    // badge
-    ctx.fillStyle = "rgba(255,255,255,1)";
-    ctx.strokeStyle = "rgba(15,23,42,0.18)";
-    ctx.lineWidth = 2;
-    ctx.beginPath();
-    ctx.arc(x, y, 18, 0, Math.PI * 2);
-    ctx.fill();
-    ctx.stroke();
-
-    // subtle shadow ring
-    ctx.strokeStyle = "rgba(0,0,0,0.08)";
-    ctx.lineWidth = 3;
-    ctx.beginPath();
-    ctx.arc(x, y, 19.5, 0, Math.PI * 2);
-    ctx.stroke();
-
-    // emoji
-    ctx.font = `26px "Microsoft JhengHei","微軟正黑體", system-ui, Apple Color Emoji, Segoe UI Emoji`;
+    ctx.font = `34px "Microsoft JhengHei","微軟正黑體", system-ui, "Apple Color Emoji","Segoe UI Emoji","Noto Color Emoji"`;
     ctx.textAlign = "center";
     ctx.textBaseline = "middle";
-    ctx.fillStyle = "#000";
-    ctx.fillText(it.icon, x, y + 0.5);
+
+    // 不畫任何底圈、不畫 stroke、不畫背景
+    ctx.fillText(it.icon, it.x, laneY[it.lane]);
 
     ctx.restore();
   }
@@ -727,7 +728,7 @@
     // legs
     const legY = y + bodyH*0.62;
     const legSwing = phase * (s * 0.20);
-    function leg(px, front) {
+    function legFn(px, front) {
       ctx.strokeStyle = cat.stripe;
       ctx.lineWidth = Math.max(5, s * 0.12);
       ctx.lineCap = "round";
@@ -736,10 +737,10 @@
       ctx.lineTo(px + (front ? legSwing : -legSwing), legY);
       ctx.stroke();
     }
-    leg(x - bodyL*0.22, true);
-    leg(x + bodyL*0.06, false);
-    leg(x + bodyL*0.28, true);
-    leg(x - bodyL*0.40, false);
+    legFn(x - bodyL*0.22, true);
+    legFn(x + bodyL*0.06, false);
+    legFn(x + bodyL*0.28, true);
+    legFn(x - bodyL*0.40, false);
 
     // body
     ctx.fillStyle = cat.body;
@@ -780,18 +781,6 @@
     ctx.fill();
 
     ctx.restore();
-
-    // ✅ magnet aura (subtle) around cat
-    if (magnet > 0) {
-      ctx.save();
-      ctx.globalAlpha = 0.25;
-      ctx.strokeStyle = "rgba(59,130,246,1)";
-      ctx.lineWidth = 4;
-      ctx.beginPath();
-      ctx.arc(x + 20, y, 34 + 6*Math.sin(t*10), 0, Math.PI*2);
-      ctx.stroke();
-      ctx.restore();
-    }
   }
 
   function drawPops(dt) {
@@ -828,48 +817,25 @@
     }
   }
 
-  // ✅ lives: 兩瓶獨立顯示（角落 UI）
+  // ✅ lives：只畫🧪，不要任何圓框/底板
   function drawLives() {
-    const x0 = 16, y0 = 14;
-    const gap = 34;
+    const x0 = 14, y0 = 12, gap = 30;
 
     ctx.save();
-    ctx.globalAlpha = 1;
-    ctx.font = `26px "Microsoft JhengHei","微軟正黑體", system-ui, Apple Color Emoji, Segoe UI Emoji`;
+    ctx.font = `26px "Microsoft JhengHei","微軟正黑體", system-ui, "Apple Color Emoji","Segoe UI Emoji","Noto Color Emoji"`;
     ctx.textAlign = "left";
     ctx.textBaseline = "top";
+    ctx.shadowColor = "transparent";
+    ctx.shadowBlur = 0;
+    ctx.filter = "none";
 
     for (let i = 0; i < MAX_LIVES; i++) {
-      const on = i < lives;
-
-      ctx.globalAlpha = 1;
-      ctx.fillStyle = "rgba(255,255,255,0.92)";
-      ctx.strokeStyle = "rgba(15,23,42,0.12)";
-      ctx.lineWidth = 1;
-      const bx = x0 + i * gap - 6;
-      const by = y0 - 4;
-      const bw = 34;
-      const bh = 34;
-      roundRect(bx, by, bw, bh, 10);
-      ctx.fill();
-      ctx.stroke();
-
-      ctx.globalAlpha = on ? 1 : 0.28;
+      ctx.globalAlpha = (i < lives) ? 1 : 0.22;
       ctx.fillText("🧪", x0 + i * gap, y0);
     }
 
     ctx.restore();
     ctx.globalAlpha = 1;
-  }
-
-  function roundRect(x,y,w,h,r){
-    ctx.beginPath();
-    ctx.moveTo(x+r, y);
-    ctx.arcTo(x+w, y, x+w, y+h, r);
-    ctx.arcTo(x+w, y+h, x, y+h, r);
-    ctx.arcTo(x, y+h, x, y, r);
-    ctx.arcTo(x, y, x+w, y, r);
-    ctx.closePath();
   }
 
   // 最後五秒倒數（半透明 50%）
@@ -931,9 +897,10 @@
     drawFinalCountdownBounce();
   }
 
-  // ===== Skill timers apply =====
+  // ===== timers =====
   function tickSkillTimers(dt){
     skillCD = Math.max(0, skillCD - dt);
+
     invincible = Math.max(0, invincible - dt);
     slowmo = Math.max(0, slowmo - dt);
     foodBoost = Math.max(0, foodBoost - dt);
@@ -942,6 +909,40 @@
     if (invincible <= 0) scoreGainMult = 1.0;
     if (foodBoost <= 0) foodMult = 1.0;
     if (slowmo <= 0) slowFactor = 1.0;
+  }
+
+  // ===== magnet apply =====
+  function applyMagnet(worldDT) {
+    if (magnet <= 0) return;
+
+    const px = playerX();
+    const py = playerY();
+
+    for (const it of items) {
+      if (it.kind !== "food") continue;
+
+      const ix = it.x;
+      const iy = laneY[it.lane];
+
+      const dx = px - ix;
+      const dy = py - iy;
+
+      // 只吸附近（避免整張地圖都被吸）
+      if (Math.abs(dx) > MAGNET_RANGE_X) continue;
+      if (Math.abs(dy) > MAGNET_RANGE_Y) continue;
+
+      // 吸力：往玩家靠近
+      const dist = Math.max(30, Math.hypot(dx, dy));
+      const ux = dx / dist;
+      const uy = dy / dist;
+
+      it.x += ux * MAGNET_PULL * worldDT;
+      // 只稍微調 y（避免跨跑道吸得太怪）
+      if (Math.abs(dy) < MAGNET_RANGE_Y * 0.75) {
+        // 讓食物靠近跑道中心（視覺更穩）
+        // 不直接改 lane，保持原跑道
+      }
+    }
   }
 
   // ===== Main loop =====
@@ -973,7 +974,7 @@
     // score per second
     score += dt * scorePerSecond * scoreGainMult;
 
-    const speed = baseSpeed * (1 + elapsed * speedRamp);
+    const speed = baseSpeed * speedMult();
 
     if (obstacleTimer >= obstacleInterval()) {
       obstacleTimer = 0;
@@ -991,24 +992,13 @@
     for (const ob of obstacles) ob.x -= speed * worldDT;
     for (const it of items) it.x -= speed * worldDT;
 
-    // ✅ Magnet: 吸同跑道前方「食物」往玩家靠近
-    if (magnet > 0) {
-      const px = playerX();
-      const pullRange = 320;
-      const pullSpeed = 980; // pixels/sec extra pull
-      for (const it of items) {
-        if (it.kind !== "food") continue;
-        if (it.lane !== lane) continue;
-        const dx = it.x - (px + 40);
-        if (dx > 0 && dx < pullRange) {
-          it.x -= pullSpeed * worldDT * (1 - dx / pullRange);
-        }
-      }
-    }
+    // ✅ magnet 把食物吸回來（在移動後做，效果更直覺）
+    applyMagnet(worldDT);
 
     while (obstacles.length && obstacles[0].x < -220) obstacles.shift();
     while (items.length && items[0].x < -220) items.shift();
 
+    // collision
     const px = playerX();
     const py = playerY();
     const playerRect = { x: px - CAT_SIZE*0.65, y: py - CAT_SIZE*0.55, w: CAT_SIZE*1.6, h: CAT_SIZE*1.1 };
@@ -1066,15 +1056,6 @@
     }
 
     requestAnimationFrame(loop);
-  }
-
-  function obstacleInterval() {
-    const v = obstacleBaseInterval - elapsed * 0.018;
-    return Math.max(obstacleMinInterval, v);
-  }
-  function itemInterval() {
-    const v = itemBaseInterval - elapsed * 0.012;
-    return Math.max(itemMinInterval, v);
   }
 
   // ===== Buttons =====
