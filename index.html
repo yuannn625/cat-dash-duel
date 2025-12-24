@@ -38,8 +38,21 @@
 
       <div id="overlay" class="overlay">
         <div class="card" id="overlayCard">
+
+          <!-- ✅ NEW：第一個畫面（先按 START） -->
+          <div id="panelStart" class="panel">
+            <div class="startTitle">🐾 貓咪三跑道衝刺賽</div>
+            <div class="startSub">按下 START → 選玩家人數 → 選貓 → 開跑</div>
+            <div class="startActions">
+              <button class="btn big" id="btnEnter">START</button>
+            </div>
+            <div class="tiny" style="text-align:center;margin-top:10px;">
+              操作：空白鍵循環換道｜↑↓/W/S 指定換道｜技能：F（有冷卻）
+            </div>
+          </div>
+
           <!-- 選玩家數 + 選貓 -->
-          <div id="panelPick" class="panel">
+          <div id="panelPick" class="panel hidden">
             <div class="cardTitle" id="pickTitle">先選擇玩家人數（1～4）</div>
             <div class="cardBody" id="pickBody">
               選好人數後，會依序讓 玩家一～玩家四 選貓（不可重複）。
@@ -88,6 +101,7 @@
               <button class="btn" id="btnBackToPick">再玩一次</button>
             </div>
           </div>
+
         </div>
       </div>
 
