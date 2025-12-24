@@ -656,6 +656,7 @@
   function drawObstacle(ob) { drawTree(ob.x, laneY[ob.lane], ob.w); }
 
   function drawItem(it) {
+    ctx.globalAlpha = 1;
   const y = laneY[it.lane];
 
   // ✅ 保證不透明（不吃到前面任何 globalAlpha/陰影設定）
