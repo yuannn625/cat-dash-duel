@@ -1,4 +1,3 @@
-/* style.css */
 :root{
   --bgA:#fff8ee;
   --bgB:#e9f7ff;
@@ -60,7 +59,13 @@ body{
   box-shadow:0 18px 40px rgba(15,23,42,.10);
   overflow:hidden;
 }
+
 canvas{ display:block; width:100%; height:100%; }
+
+/* ✅ 只有 overlay 顯示時，背後遊戲畫面 50% 透明（不是整個都透明） */
+.stage.dim canvas{
+  opacity: 0.5;
+}
 
 .legend{
   position:absolute;
@@ -78,8 +83,7 @@ canvas{ display:block; width:100%; height:100%; }
   box-shadow:0 12px 30px rgba(15,23,42,.12);
 }
 
-/* ✅ overlay 背景：黑色 50% 透明（看得到遊戲畫面但變暗） */
-.overlay{ position:absolute; inset:0; display:flex; align-items:center; justify-content:center; background:rgba(0,0,0,.50); }
+.overlay{ position:absolute; inset:0; display:flex; align-items:center; justify-content:center; background:rgba(255,255,255,.25); }
 .overlay.hidden{ display:none; }
 
 .card{
