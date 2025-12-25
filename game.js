@@ -1,3 +1,4 @@
+// game.js
 (() => {
   const canvas = document.getElementById("game");
   const stage = document.getElementById("stage");
@@ -122,10 +123,10 @@
       name: "橘貓",
       desc: "可愛橘橘，活力滿滿",
       skillName: "衝刺無敵",
-      skillDesc: "2 秒無敵（可硬吃樹），但期間分數獲得 x0.6",
+      skillDesc: "3 秒無敵（可硬吃樹），但期間分數獲得 x0.6",
       cd: 7.5,
       body: "#f59e0b", belly: "#fde68a", stripe: "#d97706",
-      onUse: () => activateInvincible(2.0, 0.6),
+      onUse: () => activateInvincible(3.0, 0.6),
     },
     {
       id: "tux",
@@ -141,11 +142,11 @@
       id: "gray",
       name: "灰貓",
       desc: "耐看灰色系",
-      skillName: "瞬間換道",
-      skillDesc: "0.7 秒內 ↑↓/W/S 立刻換道（不吃冷卻延遲）",
-      cd: 6.5,
+      skillName: "磁鐵吸附",
+      skillDesc: "3 秒內附近食物會被吸過來（更好搶分）",
+      cd: 10.0,
       body: "#64748b", belly: "#e2e8f0", stripe: "#475569",
-      onUse: () => activateDashLane(0.7),
+      onUse: () => activateMagnet(3.0),
     },
     {
       id: "calico",
@@ -222,7 +223,7 @@
 
   // ✅ lives + hit protection
   let lives = MAX_LIVES;
-  let hitInvuln = 0;     // after hit, ignore obstacles for a while
+  let hitInvuln = 0;
   let screenShake = 0;
 
   // ✅ skill state
@@ -233,7 +234,12 @@
   let slowFactor = 1.0;
   let foodBoost = 0;
   let foodMult = 1.0;
-  let dashLaneWindow = 0;
+  let dashLaneWindow = 0; // 保留不動
+  // ✅ Magnet
+  let magnet = 0;
+  const MAGNET_RANGE_X = 220;
+  const MAGNET_RANGE_Y = 80;
+  const MAGNET_PULL = 920;
 
   const clamp = (v,a,b)=>Math.max(a,Math.min(b,v));
   const playerX = ()=> W * playerXRatio;
@@ -264,7 +270,6 @@
     const cat = currentCat();
     hudSkillName.textContent = cat.skillName;
 
-    // CD bar: remaining ratio
     const pct = cat.cd > 0 ? clamp(skillCD / cat.cd, 0, 1) : 0;
     hudSkillCD.style.width = `${Math.floor(pct * 100)}%`;
     hudSkillCD.style.background = pct <= 0.001 ? "rgba(34,197,94,1)" : "rgba(239,68,68,1)";
@@ -299,6 +304,7 @@
     foodBoost = 0;
     foodMult = 1.0;
     dashLaneWindow = 0;
+    magnet = 0;
 
     updateHUD();
     drawFrame(0);
@@ -344,7 +350,6 @@
     btn.addEventListener("click", () => setPlayerCount(Number(btn.dataset.n)));
   });
 
-  // ===== Cat Picker (修正：確保技能文字一定顯示) =====
   function renderCatPicker() {
     catGrid.innerHTML = "";
     CATS.forEach(cat => {
@@ -429,8 +434,6 @@
   function addPop(x, y, text, kind, ttl = 0.75) {
     pops.push({ x, y, text, ttl, vy: -75, scale: 1.7, kind, base: ttl });
   }
-
-  // ✅ 技能提示：0.5 秒顯示在正中央
   function toastSkill(text, ok=true) {
     addPop(W/2, H*0.36, text, ok ? "skillToast" : "cooldownToast", 0.5);
   }
@@ -452,17 +455,16 @@
   window.addEventListener("keydown", (e) => {
     const k = e.key.toLowerCase();
 
-    // skill
     if (k === "f") {
       e.preventDefault();
       tryUseSkill();
       return;
     }
 
+    // ✅ overlay 顯示時不要用 Space 亂開局；只在 running 時換道
     if (e.code === "Space") {
       e.preventDefault();
-      if (!running && !overlay.classList.contains("hidden")) startRound();
-      else if (running) cycleLaneDown();
+      if (running) cycleLaneDown();
       return;
     }
 
@@ -480,9 +482,11 @@
     }
   });
 
+  // ✅ overlay 顯示時不要點 canvas 亂開局（避免搶走開始按鈕流程）
   canvas.addEventListener("pointerdown", () => {
-    if (!running && !overlay.classList.contains("hidden")) startRound();
-    else if (running) cycleLaneDown();
+    if (overlay.classList.contains("hidden")) {
+      if (running) cycleLaneDown();
+    }
   });
 
   // ===== Skill effects =====
@@ -500,6 +504,9 @@
   }
   function activateDashLane(sec) {
     dashLaneWindow = Math.max(dashLaneWindow, sec);
+  }
+  function activateMagnet(sec) {
+    magnet = Math.max(magnet, sec);
   }
 
   // ===== Start/finish =====
@@ -655,9 +662,14 @@
 
   function drawObstacle(ob) { drawTree(ob.x, laneY[ob.lane], ob.w); }
 
+  // ✅ 食物/炸彈完全不透明 + 防止殘留 shadow/filter 造成怪圈
   function drawItem(it) {
     ctx.save();
     ctx.globalAlpha = 1;
+    ctx.shadowColor = "transparent";
+    ctx.shadowBlur = 0;
+    ctx.filter = "none";
+
     ctx.font = `34px "Microsoft JhengHei","微軟正黑體", system-ui, Apple Color Emoji, Segoe UI Emoji`;
     ctx.textAlign = "center";
     ctx.textBaseline = "middle";
@@ -676,7 +688,6 @@
     ctx.save();
     ctx.globalAlpha = alpha;
 
-    // tail
     ctx.strokeStyle = cat.stripe;
     ctx.lineWidth = Math.max(4, s * 0.10);
     ctx.lineCap = "round";
@@ -685,7 +696,6 @@
     ctx.quadraticCurveTo(x - bodyL*1.00, y - bodyH*0.55, x - bodyL*0.78, y + bodyH*0.18);
     ctx.stroke();
 
-    // legs
     const legY = y + bodyH*0.62;
     const legSwing = phase * (s * 0.20);
     function leg(px, front) {
@@ -702,25 +712,21 @@
     leg(x + bodyL*0.28, true);
     leg(x - bodyL*0.40, false);
 
-    // body
     ctx.fillStyle = cat.body;
     ctx.beginPath();
     ctx.ellipse(x, y, bodyL*0.55, bodyH*0.55, 0, 0, Math.PI*2);
     ctx.fill();
 
-    // belly
     ctx.fillStyle = cat.belly;
     ctx.beginPath();
     ctx.ellipse(x + bodyL*0.12, y + bodyH*0.10, bodyL*0.35, bodyH*0.35, 0, 0, Math.PI*2);
     ctx.fill();
 
-    // head
     const hx = x + bodyL*0.64;
     const hr = s*0.34;
     ctx.fillStyle = cat.body;
     ctx.beginPath(); ctx.arc(hx, y - bodyH*0.18, hr, 0, Math.PI*2); ctx.fill();
 
-    // ears
     ctx.fillStyle = cat.stripe;
     ctx.beginPath();
     ctx.moveTo(hx - hr*0.55, y - bodyH*0.62);
@@ -733,7 +739,6 @@
     ctx.lineTo(hx - hr*0.05, y - bodyH*0.62);
     ctx.fill();
 
-    // eyes
     ctx.fillStyle = "rgba(15,23,42,0.95)";
     ctx.beginPath();
     ctx.arc(hx - hr*0.18, y - bodyH*0.18, 2.6, 0, Math.PI * 2);
@@ -777,7 +782,7 @@
     }
   }
 
-  // ✅ lives: 兩瓶獨立顯示（角落 UI）
+  // ✅ lives：不要任何框框/底板，只顯示 🧪（沒了就變淡）
   function drawLives() {
     const x0 = 16, y0 = 14;
     const gap = 34;
@@ -788,37 +793,12 @@
     ctx.textBaseline = "top";
 
     for (let i = 0; i < MAX_LIVES; i++) {
-      const on = i < lives;
-      // 底板
-      ctx.globalAlpha = 1;
-      ctx.fillStyle = "rgba(255,255,255,0.90)";
-      ctx.strokeStyle = "rgba(15,23,42,0.12)";
-      ctx.lineWidth = 1;
-      const bx = x0 + i * gap - 6;
-      const by = y0 - 4;
-      const bw = 34;
-      const bh = 34;
-      roundRect(bx, by, bw, bh, 10);
-      ctx.fill();
-      ctx.stroke();
-
-      // 藥水本體
-      ctx.globalAlpha = on ? 1 : 0.28;
+      ctx.globalAlpha = (i < lives) ? 1 : 0.22;
       ctx.fillText("🧪", x0 + i * gap, y0);
     }
 
     ctx.restore();
     ctx.globalAlpha = 1;
-  }
-
-  function roundRect(x,y,w,h,r){
-    ctx.beginPath();
-    ctx.moveTo(x+r, y);
-    ctx.arcTo(x+w, y, x+w, y+h, r);
-    ctx.arcTo(x+w, y+h, x, y+h, r);
-    ctx.arcTo(x, y+h, x, y, r);
-    ctx.arcTo(x, y, x+w, y, r);
-    ctx.closePath();
   }
 
   // 最後五秒倒數（半透明 50%）
@@ -887,6 +867,7 @@
     slowmo = Math.max(0, slowmo - dt);
     foodBoost = Math.max(0, foodBoost - dt);
     dashLaneWindow = Math.max(0, dashLaneWindow - dt);
+    magnet = Math.max(0, magnet - dt);
 
     if (invincible <= 0) scoreGainMult = 1.0;
     if (foodBoost <= 0) foodMult = 1.0;
@@ -900,9 +881,8 @@
     const t = ts / 1000;
     let dt = tPrev ? (t - tPrev) : 0;
     tPrev = t;
-    dt = Math.min(dt, 0.05); // prevent huge dt
+    dt = Math.min(dt, 0.05);
 
-    // world dt for slowmo
     let worldDT = dt;
     if (slowmo > 0) worldDT *= slowFactor;
 
@@ -911,47 +891,61 @@
 
     laneVisual += (lane - laneVisual) * 0.18;
 
-    // timers
     obstacleTimer += worldDT;
     itemTimer += worldDT;
 
-    // hit invuln / shake
     hitInvuln = Math.max(0, hitInvuln - dt);
     screenShake = Math.max(0, screenShake - dt);
 
-    // skill timers
     tickSkillTimers(dt);
 
-    // score per second
     score += dt * scorePerSecond * scoreGainMult;
 
-    const speed = baseSpeed * speedMult();
+    const speed = baseSpeed * (1 + elapsed * speedRamp);
 
-    if (obstacleTimer >= obstacleInterval()) {
+    if (obstacleTimer >= (obstacleBaseInterval - elapsed * 0.018)) {
       obstacleTimer = 0;
       spawnObstacle();
       if (Math.random() < clamp(0.06 + elapsed * 0.01, 0.06, 0.22)) {
         setTimeout(() => { if (running) spawnObstacle(); }, 120);
       }
     }
-    if (itemTimer >= itemInterval()) {
+    if (itemTimer >= (itemBaseInterval - elapsed * 0.012)) {
       itemTimer = 0;
       spawnItem();
     }
 
-    // move objects
     for (const ob of obstacles) ob.x -= speed * worldDT;
     for (const it of items) it.x -= speed * worldDT;
+
+    // ✅ Magnet：只吸 food（不吸炸彈）
+    if (magnet > 0) {
+      const pxm = playerX();
+      const pym = playerY();
+
+      for (const it of items) {
+        if (it.kind !== "food") continue;
+
+        const iy = laneY[it.lane];
+        const dx = pxm - it.x;
+        const dy = pym - iy;
+
+        if (Math.abs(dx) > MAGNET_RANGE_X) continue;
+        if (Math.abs(dy) > MAGNET_RANGE_Y) continue;
+
+        const dist = Math.max(30, Math.hypot(dx, dy));
+        const ux = dx / dist;
+        it.x += ux * MAGNET_PULL * worldDT;
+      }
+    }
 
     while (obstacles.length && obstacles[0].x < -220) obstacles.shift();
     while (items.length && items[0].x < -220) items.shift();
 
-    // collision
     const px = playerX();
     const py = playerY();
     const playerRect = { x: px - CAT_SIZE*0.65, y: py - CAT_SIZE*0.55, w: CAT_SIZE*1.6, h: CAT_SIZE*1.1 };
 
-    // ✅ obstacle hit: deduct potion, NOT end unless lives==0
     if (hitInvuln <= 0 && invincible <= 0) {
       for (const ob of obstacles) {
         const oy = laneY[ob.lane];
@@ -960,7 +954,7 @@
           lives -= 1;
           sfxCrash();
           screenShake = 0.35;
-          hitInvuln = 0.90; // ✅ important: prevents instant double hit
+          hitInvuln = 0.90;
           addPop(px, py - 70, "撞到！", "hit");
           addPop(px + 90, py - 40, "-1🧪", "hit");
 
@@ -973,7 +967,6 @@
       }
     }
 
-    // items
     for (let i = items.length - 1; i >= 0; i--) {
       const it = items[i];
       const iy = laneY[it.lane];
@@ -1004,26 +997,6 @@
     }
 
     requestAnimationFrame(loop);
-  }
-
-  // ===== utils =====
-  function speedMult() { return 1 + elapsed * speedRamp; }
-  function obstacleInterval() {
-    const v = obstacleBaseInterval - elapsed * 0.018;
-    return Math.max(obstacleMinInterval, v);
-  }
-  function itemInterval() {
-    const v = itemBaseInterval - elapsed * 0.012;
-    return Math.max(itemMinInterval, v);
-  }
-
-  function weightedLane() {
-    const w = [1.0, RISK_OBSTACLE_WEIGHT, 1.0];
-    const sum = w[0] + w[1] + w[2];
-    const r = Math.random() * sum;
-    if (r < w[0]) return 0;
-    if (r < w[0] + w[1]) return 1;
-    return 2;
   }
 
   // ===== Buttons =====
