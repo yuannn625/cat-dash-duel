@@ -1,4 +1,3 @@
-// game.js
 (() => {
   const canvas = document.getElementById("game");
   const stage = document.getElementById("stage");
@@ -123,10 +122,10 @@
       name: "橘貓",
       desc: "可愛橘橘，活力滿滿",
       skillName: "衝刺無敵",
-      skillDesc: "3 秒無敵（可硬吃樹），但期間分數獲得 x0.6",
+      skillDesc: "2 秒無敵（可硬吃樹），但期間分數獲得 x0.6",
       cd: 7.5,
       body: "#f59e0b", belly: "#fde68a", stripe: "#d97706",
-      onUse: () => activateInvincible(3.0, 0.6),
+      onUse: () => activateInvincible(2.0, 0.6),
     },
     {
       id: "tux",
@@ -142,11 +141,11 @@
       id: "gray",
       name: "灰貓",
       desc: "耐看灰色系",
-      skillName: "磁鐵吸附",
-      skillDesc: "3 秒內附近食物會被吸過來（更好搶分）",
-      cd: 10.0,
+      skillName: "瞬間換道",
+      skillDesc: "0.7 秒內 ↑↓/W/S 立刻換道（不吃冷卻延遲）",
+      cd: 6.5,
       body: "#64748b", belly: "#e2e8f0", stripe: "#475569",
-      onUse: () => activateMagnet(3.0),
+      onUse: () => activateDashLane(0.7),
     },
     {
       id: "calico",
@@ -234,12 +233,7 @@
   let slowFactor = 1.0;
   let foodBoost = 0;
   let foodMult = 1.0;
-  let dashLaneWindow = 0; // 保留不動
-  // ✅ Magnet
-  let magnet = 0;
-  const MAGNET_RANGE_X = 220;
-  const MAGNET_RANGE_Y = 80;
-  const MAGNET_PULL = 920;
+  let dashLaneWindow = 0;
 
   const clamp = (v,a,b)=>Math.max(a,Math.min(b,v));
   const playerX = ()=> W * playerXRatio;
@@ -251,7 +245,10 @@
     void overlayCard.offsetWidth;
     overlayCard.classList.add("pop");
   }
+
+  // ✅ overlay 顯示時：讓背後遊戲 50% 透明（只在 overlay 顯示）
   function showPanel(panel) {
+    stage.classList.add("dim");          // ✅ 新增
     overlay.classList.remove("hidden");
     panelPick.classList.add("hidden");
     panelReady.classList.add("hidden");
@@ -259,7 +256,12 @@
     panel.classList.remove("hidden");
     popCard();
   }
-  function hideOverlay() { overlay.classList.add("hidden"); }
+
+  // ✅ overlay 隱藏時：恢復 100% 不透明
+  function hideOverlay() {
+    stage.classList.remove("dim");       // ✅ 新增
+    overlay.classList.add("hidden");
+  }
 
   // ===== HUD =====
   function updateHUD() {
@@ -304,7 +306,6 @@
     foodBoost = 0;
     foodMult = 1.0;
     dashLaneWindow = 0;
-    magnet = 0;
 
     updateHUD();
     drawFrame(0);
@@ -350,6 +351,7 @@
     btn.addEventListener("click", () => setPlayerCount(Number(btn.dataset.n)));
   });
 
+  // ===== Cat Picker =====
   function renderCatPicker() {
     catGrid.innerHTML = "";
     CATS.forEach(cat => {
@@ -425,7 +427,7 @@
     if (!running) return;
     if (cooldown > 0) return;
     lane = clamp(newLane, 0, LANES - 1);
-    cooldown = laneSwitchCooldown;
+    cooldown = 0.08;
     sfxSwitch();
   }
   function cycleLaneDown() { setLane((lane + 1) % LANES); }
@@ -461,10 +463,10 @@
       return;
     }
 
-    // ✅ overlay 顯示時不要用 Space 亂開局；只在 running 時換道
     if (e.code === "Space") {
       e.preventDefault();
-      if (running) cycleLaneDown();
+      if (!running && !overlay.classList.contains("hidden")) startRound();
+      else if (running) cycleLaneDown();
       return;
     }
 
@@ -482,32 +484,16 @@
     }
   });
 
-  // ✅ overlay 顯示時不要點 canvas 亂開局（避免搶走開始按鈕流程）
   canvas.addEventListener("pointerdown", () => {
-    if (overlay.classList.contains("hidden")) {
-      if (running) cycleLaneDown();
-    }
+    if (!running && !overlay.classList.contains("hidden")) startRound();
+    else if (running) cycleLaneDown();
   });
 
   // ===== Skill effects =====
-  function activateInvincible(sec, scoreMult) {
-    invincible = Math.max(invincible, sec);
-    scoreGainMult = scoreMult;
-  }
-  function activateSlowmo(sec, factor) {
-    slowmo = Math.max(slowmo, sec);
-    slowFactor = factor;
-  }
-  function activateFoodBoost(sec, mult) {
-    foodBoost = Math.max(foodBoost, sec);
-    foodMult = mult;
-  }
-  function activateDashLane(sec) {
-    dashLaneWindow = Math.max(dashLaneWindow, sec);
-  }
-  function activateMagnet(sec) {
-    magnet = Math.max(magnet, sec);
-  }
+  function activateInvincible(sec, scoreMult) { invincible = Math.max(invincible, sec); scoreGainMult = scoreMult; }
+  function activateSlowmo(sec, factor) { slowmo = Math.max(slowmo, sec); slowFactor = factor; }
+  function activateFoodBoost(sec, mult) { foodBoost = Math.max(foodBoost, sec); foodMult = mult; }
+  function activateDashLane(sec) { dashLaneWindow = Math.max(dashLaneWindow, sec); }
 
   // ===== Start/finish =====
   function startRound() {
@@ -515,7 +501,7 @@
     roundSeconds = parseInt(roundSecondsInput.value || "20", 10);
     if (!Number.isFinite(roundSeconds) || roundSeconds < 5) roundSeconds = 20;
 
-    hideOverlay();
+    hideOverlay(); // ✅ 這裡會把 dim 拿掉，canvas 回到 100% 不透明
     running = true;
     beep(520, 0.03, "sine", 0.03);
     requestAnimationFrame(loop);
@@ -662,14 +648,9 @@
 
   function drawObstacle(ob) { drawTree(ob.x, laneY[ob.lane], ob.w); }
 
-  // ✅ 食物/炸彈完全不透明 + 防止殘留 shadow/filter 造成怪圈
   function drawItem(it) {
     ctx.save();
-    ctx.globalAlpha = 1;
-    ctx.shadowColor = "transparent";
-    ctx.shadowBlur = 0;
-    ctx.filter = "none";
-
+    ctx.globalAlpha = 1; // ✅ 繪圖本身永遠不透明
     ctx.font = `34px "Microsoft JhengHei","微軟正黑體", system-ui, Apple Color Emoji, Segoe UI Emoji`;
     ctx.textAlign = "center";
     ctx.textBaseline = "middle";
@@ -782,7 +763,7 @@
     }
   }
 
-  // ✅ lives：不要任何框框/底板，只顯示 🧪（沒了就變淡）
+  // ✅ lives：移除圓框底板，只留 🧪（不會再有那個方框/圓框感）
   function drawLives() {
     const x0 = 16, y0 = 14;
     const gap = 34;
@@ -793,7 +774,8 @@
     ctx.textBaseline = "top";
 
     for (let i = 0; i < MAX_LIVES; i++) {
-      ctx.globalAlpha = (i < lives) ? 1 : 0.22;
+      const on = i < lives;
+      ctx.globalAlpha = on ? 1 : 0.28;
       ctx.fillText("🧪", x0 + i * gap, y0);
     }
 
@@ -801,7 +783,6 @@
     ctx.globalAlpha = 1;
   }
 
-  // 最後五秒倒數（半透明 50%）
   function drawFinalCountdownBounce() {
     const remain = roundSeconds - elapsed;
     if (!(remain <= 5 && remain > 0)) return;
@@ -860,21 +841,18 @@
     drawFinalCountdownBounce();
   }
 
-  // ===== Skill timers apply =====
   function tickSkillTimers(dt){
     skillCD = Math.max(0, skillCD - dt);
     invincible = Math.max(0, invincible - dt);
     slowmo = Math.max(0, slowmo - dt);
     foodBoost = Math.max(0, foodBoost - dt);
     dashLaneWindow = Math.max(0, dashLaneWindow - dt);
-    magnet = Math.max(0, magnet - dt);
 
     if (invincible <= 0) scoreGainMult = 1.0;
     if (foodBoost <= 0) foodMult = 1.0;
     if (slowmo <= 0) slowFactor = 1.0;
   }
 
-  // ===== Main loop =====
   function loop(ts) {
     if (!running) return;
 
@@ -901,43 +879,22 @@
 
     score += dt * scorePerSecond * scoreGainMult;
 
-    const speed = baseSpeed * (1 + elapsed * speedRamp);
+    const speed = baseSpeed * speedMult();
 
-    if (obstacleTimer >= (obstacleBaseInterval - elapsed * 0.018)) {
+    if (obstacleTimer >= obstacleInterval()) {
       obstacleTimer = 0;
       spawnObstacle();
       if (Math.random() < clamp(0.06 + elapsed * 0.01, 0.06, 0.22)) {
         setTimeout(() => { if (running) spawnObstacle(); }, 120);
       }
     }
-    if (itemTimer >= (itemBaseInterval - elapsed * 0.012)) {
+    if (itemTimer >= itemInterval()) {
       itemTimer = 0;
       spawnItem();
     }
 
     for (const ob of obstacles) ob.x -= speed * worldDT;
     for (const it of items) it.x -= speed * worldDT;
-
-    // ✅ Magnet：只吸 food（不吸炸彈）
-    if (magnet > 0) {
-      const pxm = playerX();
-      const pym = playerY();
-
-      for (const it of items) {
-        if (it.kind !== "food") continue;
-
-        const iy = laneY[it.lane];
-        const dx = pxm - it.x;
-        const dy = pym - iy;
-
-        if (Math.abs(dx) > MAGNET_RANGE_X) continue;
-        if (Math.abs(dy) > MAGNET_RANGE_Y) continue;
-
-        const dist = Math.max(30, Math.hypot(dx, dy));
-        const ux = dx / dist;
-        it.x += ux * MAGNET_PULL * worldDT;
-      }
-    }
 
     while (obstacles.length && obstacles[0].x < -220) obstacles.shift();
     while (items.length && items[0].x < -220) items.shift();
