@@ -49,12 +49,6 @@ body{
 .btn:hover{ filter:brightness(1.02); }
 .btn:active{ transform:scale(.99); }
 
-.btnBig{
-  padding:14px 26px;
-  font-size:18px;
-  border-radius:14px;
-}
-
 .stage{
   position:relative;
   flex:1;
@@ -83,12 +77,7 @@ canvas{ display:block; width:100%; height:100%; }
   box-shadow:0 12px 30px rgba(15,23,42,.12);
 }
 
-/* ✅ overlay：背景仍可見，暗 50% */
-.overlay{
-  position:absolute; inset:0;
-  display:flex; align-items:center; justify-content:center;
-  background:rgba(0,0,0,.50);
-}
+.overlay{ position:absolute; inset:0; display:flex; align-items:center; justify-content:center; background:rgba(255,255,255,.25); }
 .overlay.hidden{ display:none; }
 
 .card{
@@ -247,7 +236,3 @@ input{
   border:1px solid rgba(15,23,42,.12);
   background:rgba(255,255,255,.95);
 }
-
-/* Boot panel */
-.bootTitle{ font-size:26px; font-weight:1000; text-align:center; }
-.bootSub{ margin-top:8px; color:var(--muted); text-align:center; font-weight:900; }
